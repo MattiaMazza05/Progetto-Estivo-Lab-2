@@ -1,12 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include "macro.h"
 #include "types.h"
-
+#include "rescuers.h"
 #define FILENAME "emergency_typers.conf"
-#define BUFF_DIM 128
+#define BUFF_DIM 256
 
 int main()
 {
@@ -49,10 +48,9 @@ int main()
                     iC = 0;
                     i++;
 
-                    emergency_type_t *tmp = realloc(emergenze_totali, sizeof(emergency_type_t) * (tot_emergenze +1)); // metto il valore di ritorno della relloc in una variabile temporanera per controllare se ci sono errori durante l'allocazione di memoria
+                    emergency_type_t *tmp = realloc(emergenze_totali, sizeof(emergency_type_t) * (tot_emergenze + 1)); // metto il valore di ritorno della relloc in una variabile temporanera per controllare se ci sono errori durante l'allocazione di memoria
                     if (tmp == NULL)
                     {
-                        // Gestione errore: memoria esaurita
                         perror("⚠️ Errore durante l'assegnazione di memoria ⚠️");
                         free(emergenze_totali); // libera la memoria già allocata
                         exit(EXIT_FAILURE);
@@ -60,30 +58,50 @@ int main()
                     emergenze_totali = tmp;
 
                     emergenze_totali[tot_emergenze].priority = priorita;
-                    emergenze_totali[tot_emergenze].emergency_desc = malloc(
-                        strlen(nome) +
-                        1); // alloco memoria dinamica al nome per evitare che tutte le
-                            // occorrenze abbiano come nome l'ultimo letto
+                    emergenze_totali[tot_emergenze].emergency_desc = malloc(strlen(nome) + 1); // alloco memoria dinamica al nome per evitare che tutte le occorrenze abbiano come nome l'ultimo letto
                     strcpy(emergenze_totali[tot_emergenze].emergency_desc, nome);
 
-                    rescuer_request_t *socc_per_emer =
-                        NULL; // creo un altro array dinamico soccorritori per
-                              // emergenza
+                    rescuer_request_t *socc_per_emer = NULL; // creo un altro array dinamico soccorritori per emergenza
                     int num_soccorritori = 0;
-                    iC=0;
-                    while (buffer[i] != '\n' && i<bytesRead) {
-                        while (buffer[i] != ':' && i<bytesRead) {
+                    iC = 0;
+                    while (buffer[i] != '\n' && i < bytesRead)
+                    {
+                        rescuer_request_t *tmp2 = realloc(socc_per_emer, sizeof(rescuer_request_t) * (num_soccorritori + 1));
+                        if (tmp == NULL)
+                        {
+                            perror("⚠️ Errore durante l'assegnazione di memoria dinamica socc_per_emer ⚠️");
+                            free(socc_per_emer);
+                            exit(EXIT_FAILURE);
+                        }
+                        socc_per_emer = tmp2;
+                        iC = 0;
+                        while (buffer[i] != ':' && i < bytesRead)
+                        {
                             nM[iC++] = buffer[i++];
                         }
                         nM[iC] = '\0';
                         i++;
-                        num_soccorritori++;
-                        while (buffer[i]) {
-                            
+                        iC = 0;
+                        while (buffer[i] != ',' && i < bytesRead)
+                        {
+                            nS[iC++] = buffer[i++];
                         }
+                        nS[iC] = '\0';
+                        i++;
+                        iC = 0;
+                        while (buffer[i] != ';' && i < bytesRead)
+                        {
+                            nSec[iC++] = buffer[i++];
+                        }
+                        nSec[iC] = '\0';
+                        i++;
+                        socc_per_emer[num_soccorritori].required_count = atoi(nS);
+                        socc_per_emer[num_soccorritori].time_to_manage = atoi(nSec);
+                        num_soccorritori++;
                     }
-                    nM[iC] = '\0';
-                    printf("%s\n", nM);
+
+                    emergenze_totali[tot_emergenze].rescuers = socc_per_emer;
+                    emergenze_totali[tot_emergenze].rescuers_req_number = num_soccorritori;
                     tot_emergenze++;
                 }
                 else
@@ -96,10 +114,28 @@ int main()
 
     SCALL(fd, close(fd), "⚠️ Errore durante la chiusura del file ⚠️");
 
-    for (int i = 0; i < tot_emergenze; i++)
+    printf("\x1b[32m\n--- VERIFICA DATI EMERGENZE ---\x1b[0m\n");
+    for (int e = 0; e < tot_emergenze; e++)
     {
-        printf("%d, %s, %d, %d\n", i, emergenze_totali[i].emergency_desc,
-               emergenze_totali[i].priority, tot_emergenze);
+        printf("Emergenza %d:\n", e + 1);
+        printf("  Nome: \x1b[35m%s\x1b[0m\n", emergenze_totali[e].emergency_desc);
+        printf("  Priorità: \x1b[35m%d\x1b[0m\n", emergenze_totali[e].priority);
+        printf("  Numero richieste soccorritori: \x1b[35m%d\x1b[0m\n", emergenze_totali[e].rescuers_req_number);
+        for (int r = 0; r < emergenze_totali[e].rescuers_req_number; r++)
+        {
+            printf("    Richiesta %d: ", r + 1);
+            if (emergenze_totali[e].rescuers[r].type && emergenze_totali[e].rescuers[r].type->rescuer_type_name)
+                printf("Tipo: \x1b[35m%s\x1b[0m, ", emergenze_totali[e].rescuers[r].type->rescuer_type_name);
+            printf("Numero: \x1b[35m%d\x1b[0m, Tempo: \x1b[35m%d\x1b[0m\n",
+                   emergenze_totali[e].rescuers[r].required_count,
+                   emergenze_totali[e].rescuers[r].time_to_manage);
+        }
     }
+    printf("\x1b[32m--- FINE VERIFICA ---\x1b[0m\n");
+    for (int i = 0; i < tot_mezzi; i++)
+    {
+        printf("ID: %d, Tipo: %s\n", mezzi_totali[i].id, mezzi_totali[i].rescuer->rescuer_type_name);
+    }
+
     return 0;
 }

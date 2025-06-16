@@ -3,13 +3,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
+#include "rescuers.h"
 
 #define FILENAME "rescuers.conf"
 #define BUFF_DIM 128
+
+rescuer_digital_twin_t *mezzi_totali = NULL; // creo un array generale dove andrò ad inserire tramite allocazione dinamica di memoria tutti i mezzi che leggo dal file .conf
+int tot_mezzi = 0;                           // questo contatore mi serve per l'allocazione di memoria
+
 
 int main()
 {
@@ -18,9 +19,6 @@ int main()
 
     char buffer[BUFF_DIM];
     ssize_t bytesRead;
-
-    rescuer_digital_twin_t *mezzi_totali = NULL; // creo un array generale dove andrò ad inserire tramite allocazione dinamica di memoria tutti i mezzi che leggo dal file .conf
-    int tot_mezzi = 0;                           // questo contatore mi serve per l'allocazione di memoria
 
     SCALLREAD(bytesRead, read(fd, buffer, BUFF_DIM), {
         int i = 0;
