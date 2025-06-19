@@ -6,7 +6,6 @@
 rescuer_digital_twin_t *mezzi_totali = NULL; // creo un array generale dove andrò ad inserire tramite allocazione dinamica di memoria tutti i mezzi che leggo dal file .conf
 int tot_mezzi = 0;                           // questo contatore mi serve per l'allocazione di memoria
 
-
 int parse_rescuers(void)
 {
     int fd;
@@ -88,19 +87,18 @@ int parse_rescuers(void)
         } }, "⚠️ Errore durante la lettura del file");
     SCALL(fd, close(fd), "⚠️ Errore durante la chiusura del file");
 
-    printf("\n--- VERIFICA ARRAY MEZZI TOTALI ---\n");
+    printf("\n\x1b[32m========== VERIFICA MEZZI TOTALI ==========\x1b[0m\n\n");
+    printf("\x1b[36m%-4s %-12s %-12s %-12s %-10s %-8s\x1b[0m\n", "ID", "Tipo", "Posizione", "Velocità", "Stato", "Coord");
     for (int i = 0; i < tot_mezzi; i++)
     {
-        printf("Twin ID: %d | Tipo: %s | Posizione: [%d, %d] | Velocità: %d | Stato: %d\n",
+        printf("%-4d %-12s [%2d,%2d]     %-12d %-10d [%2d,%2d]\n",
                mezzi_totali[i].id,
                mezzi_totali[i].rescuer->rescuer_type_name,
-               mezzi_totali[i].x,
-               mezzi_totali[i].y,
+               mezzi_totali[i].x, mezzi_totali[i].y,
                mezzi_totali[i].rescuer->speed,
-               mezzi_totali[i].status);
+               mezzi_totali[i].status,
+               mezzi_totali[i].rescuer->x, mezzi_totali[i].rescuer->y);
     }
-    printf("--- FINE VERIFICA ---\n");
-    printf("Tutto scritto correttamente!\n");
-    
+    printf("\n\x1b[32m========== FINE VERIFICA MEZZI ==========\x1b[0m\n");
     return 0;
 }

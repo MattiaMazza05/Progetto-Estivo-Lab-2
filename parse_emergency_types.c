@@ -70,6 +70,10 @@ int parse_emergency_types(void)
                         }
                         socc_per_emer = tmp2;
                         iC = 0;
+                        if (buffer[i] == ' ')
+                        { // aggiungo questo controllo perchè il primo nome di ogni mezzo era ' Nome' questo non mi faceva corrispondere la struct al nome
+                            i++;
+                        }
                         while (buffer[i] != ':' && i < bytesRead)
                         {
                             nM[iC++] = buffer[i++];
@@ -95,7 +99,6 @@ int parse_emergency_types(void)
                             if (strcmp(nM, mezzi_totali[k].rescuer->rescuer_type_name) == 0)
                             {
                                 socc_per_emer[num_soccorritori].type = mezzi_totali[k].rescuer;
-                                printf("match %s con %s\n", nM, socc_per_emer[num_soccorritori].type->rescuer_type_name);
                                 break;
                             }
                         }
@@ -118,30 +121,38 @@ int parse_emergency_types(void)
 
     SCALL(fd, close(fd), "⚠️ Errore durante la chiusura del file ⚠️");
 
-    printf("\x1b[32m\n--- VERIFICA DATI EMERGENZE ---\x1b[0m\n");
+    printf("\n\x1b[32m========== VERIFICA EMERGENZE ==========\x1b[0m\n\n");
+    printf("\x1b[36m%-3s %-15s %-8s %-8s %-15s %-8s %-8s %-10s\x1b[0m\n",
+           "ID", "Nome", "Priorità", "Rich#", "Tipo", "Quantità", "Tempo", "Velocità");
+
     for (int e = 0; e < tot_emergenze; e++)
     {
-        printf("Emergenza %d:\n", e + 1);
-        printf("  Nome: \x1b[35m%s\x1b[0m\n", emergenze_totali[e].emergency_desc);
-        printf("  Priorità: \x1b[35m%d\x1b[0m\n", emergenze_totali[e].priority);
-        printf("  Numero richieste soccorritori: \x1b[35m%d\x1b[0m\n", emergenze_totali[e].rescuers_req_number);
-        for (int r = 0; r < emergenze_totali[e].rescuers_req_number; r++)
+        int req_num = emergenze_totali[e].rescuers_req_number;
+        for (int r = 0; r < req_num; r++)
         {
-            printf("    Richiesta %d:\n", r + 1);
+            printf("%-3d %-15s %-8d %-8d ",
+                   e + 1,
+                   emergenze_totali[e].emergency_desc,
+                   emergenze_totali[e].priority,
+                   req_num);
             if (emergenze_totali[e].rescuers[r].type)
             {
-                printf("      Tipo soccorritore: \x1b[35m%s\x1b[0m\n", emergenze_totali[e].rescuers[r].type->rescuer_type_name);
-                printf("      Velocità: \x1b[35m%d\x1b[0m\n", emergenze_totali[e].rescuers[r].type->speed);
-                printf("      Coordinate: \x1b[35m(%d, %d)\x1b[0m\n", emergenze_totali[e].rescuers[r].type->x, emergenze_totali[e].rescuers[r].type->y);
+                printf("%-15s %-8d %-8d %-10d\n",
+                       emergenze_totali[e].rescuers[r].type->rescuer_type_name,
+                       emergenze_totali[e].rescuers[r].required_count,
+                       emergenze_totali[e].rescuers[r].time_to_manage,
+                       emergenze_totali[e].rescuers[r].type->speed);
             }
             else
             {
-                printf("      Tipo soccorritore: \x1b[31mNON ASSEGNATO\x1b[0m\n");
+                printf("\x1b[31m%-15s\x1b[0m %-8d %-8d %-10s\n",
+                       "NON ASSEGNATO",
+                       emergenze_totali[e].rescuers[r].required_count,
+                       emergenze_totali[e].rescuers[r].time_to_manage,
+                       "-");
             }
-            printf("      Quantità richiesta: \x1b[35m%d\x1b[0m\n", emergenze_totali[e].rescuers[r].required_count);
-            printf("      Tempo stimato: \x1b[35m%d\x1b[0m secondi\n", emergenze_totali[e].rescuers[r].time_to_manage);
         }
     }
-    printf("\x1b[32m--- FINE VERIFICA ---\x1b[0m\n");
+    printf("\n\x1b[32m========== FINE VERIFICA EMERGENZE ==========\x1b[0m\n");
     return 0;
 }
