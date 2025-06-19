@@ -1,13 +1,10 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include "macro.h"
 #include "types.h"
 #include "rescuers.h"
+
 #define FILENAME "emergency_typers.conf"
 #define BUFF_DIM 256
 
-int main()
+int parse_emergency_types(void)
 {
     int fd;
     SCALL(fd, open(FILENAME, O_RDONLY),
@@ -17,10 +14,8 @@ int main()
     ssize_t bytesRead;
 
     emergency_type_t *emergenze_totali =
-        NULL; // creo un array generale per le emergenze allocando di volta in
-              // volta memoria in modo dinamico
-    int tot_emergenze =
-        0; // questo contatore mi serve per l'allocazione di memoria
+        NULL;              // creo un array generale per le emergenze allocando di volta in volta memoria in modo dinamico
+    int tot_emergenze = 0; // questo contatore mi serve per l'allocazione di memoria
 
     SCALLREAD(
         bytesRead, read(fd, buffer, BUFF_DIM),
@@ -67,7 +62,7 @@ int main()
                     while (buffer[i] != '\n' && i < bytesRead)
                     {
                         rescuer_request_t *tmp2 = realloc(socc_per_emer, sizeof(rescuer_request_t) * (num_soccorritori + 1));
-                        if (tmp == NULL)
+                        if (tmp2 == NULL)
                         {
                             perror("⚠️ Errore durante l'assegnazione di memoria dinamica socc_per_emer ⚠️");
                             free(socc_per_emer);
@@ -95,6 +90,15 @@ int main()
                         }
                         nSec[iC] = '\0';
                         i++;
+                        for (int k = 0; k < tot_mezzi; k++)
+                        {
+                            if (strcmp(nM, mezzi_totali[k].rescuer->rescuer_type_name) == 0)
+                            {
+                                socc_per_emer[num_soccorritori].type = mezzi_totali[k].rescuer;
+                                printf("match %s con %s\n", nM, socc_per_emer[num_soccorritori].type->rescuer_type_name);
+                                break;
+                            }
+                        }
                         socc_per_emer[num_soccorritori].required_count = atoi(nS);
                         socc_per_emer[num_soccorritori].time_to_manage = atoi(nSec);
                         num_soccorritori++;
@@ -123,19 +127,21 @@ int main()
         printf("  Numero richieste soccorritori: \x1b[35m%d\x1b[0m\n", emergenze_totali[e].rescuers_req_number);
         for (int r = 0; r < emergenze_totali[e].rescuers_req_number; r++)
         {
-            printf("    Richiesta %d: ", r + 1);
-            if (emergenze_totali[e].rescuers[r].type && emergenze_totali[e].rescuers[r].type->rescuer_type_name)
-                printf("Tipo: \x1b[35m%s\x1b[0m, ", emergenze_totali[e].rescuers[r].type->rescuer_type_name);
-            printf("Numero: \x1b[35m%d\x1b[0m, Tempo: \x1b[35m%d\x1b[0m\n",
-                   emergenze_totali[e].rescuers[r].required_count,
-                   emergenze_totali[e].rescuers[r].time_to_manage);
+            printf("    Richiesta %d:\n", r + 1);
+            if (emergenze_totali[e].rescuers[r].type)
+            {
+                printf("      Tipo soccorritore: \x1b[35m%s\x1b[0m\n", emergenze_totali[e].rescuers[r].type->rescuer_type_name);
+                printf("      Velocità: \x1b[35m%d\x1b[0m\n", emergenze_totali[e].rescuers[r].type->speed);
+                printf("      Coordinate: \x1b[35m(%d, %d)\x1b[0m\n", emergenze_totali[e].rescuers[r].type->x, emergenze_totali[e].rescuers[r].type->y);
+            }
+            else
+            {
+                printf("      Tipo soccorritore: \x1b[31mNON ASSEGNATO\x1b[0m\n");
+            }
+            printf("      Quantità richiesta: \x1b[35m%d\x1b[0m\n", emergenze_totali[e].rescuers[r].required_count);
+            printf("      Tempo stimato: \x1b[35m%d\x1b[0m secondi\n", emergenze_totali[e].rescuers[r].time_to_manage);
         }
     }
     printf("\x1b[32m--- FINE VERIFICA ---\x1b[0m\n");
-    for (int i = 0; i < tot_mezzi; i++)
-    {
-        printf("ID: %d, Tipo: %s\n", mezzi_totali[i].id, mezzi_totali[i].rescuer->rescuer_type_name);
-    }
-
     return 0;
 }

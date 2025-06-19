@@ -1,17 +1,13 @@
 CC=gcc
-CFLAGS=-Wall -Wextra -g
+CFLAGS=-Wall -Wextra -g -pedantic
 
-all: parse_r parse_e
+all: output
 
-parse_r: parse_rescuers.c
-	$(CC) $(CFLAGS) -o parse_r parse_rescuers.c
+output: main.c parse_rescuers.c parse_emergency_types.c
+	$(CC) $(CFLAGS) -o output main.c parse_rescuers.c parse_emergency_types.c
 
-parse_e: parse_emergency_types.c
-	$(CC) $(CFLAGS) -o parse_e parse_emergency_types.c
-
-run: parse_r parse_e
-	./parse_r
-	./parse_e
+run: output
+	./output
 
 clean:
-	rm -f parse_r parse_e *.o
+	rm -f output *.o

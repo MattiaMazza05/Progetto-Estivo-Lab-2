@@ -1,10 +1,5 @@
-#include "macro.h"
 #include "types.h"
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
 #include "rescuers.h"
-
 #define FILENAME "rescuers.conf"
 #define BUFF_DIM 128
 
@@ -12,7 +7,7 @@ rescuer_digital_twin_t *mezzi_totali = NULL; // creo un array generale dove andr
 int tot_mezzi = 0;                           // questo contatore mi serve per l'allocazione di memoria
 
 
-int main()
+int parse_rescuers(void)
 {
     int fd;
     SCALL(fd, open(FILENAME, O_RDONLY), "⚠️ Non sono riuscito ad aprire il file di configurazione ⚠️");
@@ -68,7 +63,7 @@ int main()
                 if (tmp == NULL) {
                     perror("⚠️ Errore durante l'assegnazione di memoria ⚠️");
                     free(mezzi_totali);
-                    exit(EXIT_FAILURE);
+                    exit(EXIT_FAILURE); 
                 }
                 mezzi_totali = tmp;
                 rescuer->speed = cS;
@@ -76,7 +71,7 @@ int main()
                 rescuer->y = y;
                 rescuer->rescuer_type_name = malloc(strlen(nome)+1); //alloco memoria dinamica in base al nome, il +1 mi serve per allocare memoria anche per lo \0
                 strcpy(rescuer->rescuer_type_name, nome);//ora copio nome dentro la struct
-                printf("Il veicolo è: \x1b[35m%s\x1b[0m ci sono \x1b[35m%d\x1b[0m veicoli totali con una velocità di \x1b[35m%d\x1b[0m caselle al secondo e la posizione della base è: \x1b[35m[%d;%d]\x1b[0m\n", rescuer->rescuer_type_name, nVeicoli, rescuer->speed, rescuer->x, rescuer->y);
+                printf("Il veicolo è: \x1b[35m%s\x1b[0 mci sono \x1b[35m%d\x1b[0m veicoli totali con una velocità di \x1b[35m%d\x1b[0m caselle al secondo e la posizione della base è: \x1b[35m[%d;%d]\x1b[0m\n", rescuer->rescuer_type_name, nVeicoli, rescuer->speed, rescuer->x, rescuer->y);
 
 
                 for (int i = 0; i < nVeicoli; i++)
