@@ -1,101 +1,130 @@
-# Laboratorio2-Primo
+# Sistema di Gestione delle Emergenze in C11
 
-## Descrizione del progetto
+> **Università di Pisa - Laboratorio 2 – a.a. 2024/2025**  
+> Progetto: Sistema concorrente per la gestione di emergenze con multithreading e code di messaggi POSIX
 
-Questo progetto gestisce la configurazione e la simulazione di mezzi di soccorso e tipologie di emergenze, leggendo i dati da file di configurazione e popolando strutture dati in C. Il progetto è suddiviso in più file sorgente e header per una migliore organizzazione e modularità.
+## Descrizione
 
----
+Questo progetto implementa un sistema concorrente per la gestione di emergenze all'interno di un ambiente bidimensionale simulato. Il sistema è realizzato in C11 e utilizza thread POSIX, meccanismi di sincronizzazione (mutex, semafori, condition variable) e una coda di messaggi POSIX per la comunicazione tra processi.
 
-## Struttura dei file
+Il sistema assegna in modo dinamico e prioritario le risorse di soccorso (pompieri, ambulanze, ecc.) alle emergenze, rispettando i vincoli temporali, evitando deadlock e, se richiesto, prevenendo la starvation.
 
-### File di configurazione
+## Funzionalità
 
-- **rescuers.conf**  
-  Contiene la configurazione dei mezzi di soccorso disponibili.  
-  Esempio:
-  ```
-  [Pompieri][5][2][100;200]
-  [Ambulanza][25][4][150;250]
-  ```
+- Parsing da file di configurazione (soccorritori, emergenze, ambiente)
+- Gestione concorrente delle emergenze
+- Assegnazione automatica dei soccorritori tramite digital twin
+- Simulazione della mappa con sistema di coordinate
+- Calcolo della distanza di Manhattan e gestione del tempo di intervento
+- Logging dettagliato di tutti gli eventi significativi
+- Client separato per l'invio delle emergenze tramite coda di messaggi
+- Preemption e aging per evitare starvation (opzionali in base al requisito)
 
-- **emergency_typers.conf**  
-  Contiene la configurazione delle tipologie di emergenza e i mezzi richiesti per ciascuna.  
-  Esempio:
-  ```
-  [Allagamento] [1] Pompieri:1,5;Ambulanza:1,2;
-  [Incendio] [2] Pompieri:2,8;Ambulanza:3,1;
-  [Sommossa] [2] Polizia:3,8;Ambulanza:2,4;
-  ```
+## Struttura dei File
 
----
+```
+├── client.c                  # Generatore di emergenze (invio su message queue)
+├── main.c                   # Core del sistema di gestione
+├── emergency_manager.c      # Gestione delle emergenze e assegnazione soccorritori
+├── logger.c                 # Gestione centralizzata del file di log
+├── parse_rescuers.c         # Parser per rescuers.conf
+├── parse_emergency_types.c  # Parser per emergency_types.conf
+├── parse_env.c              # Parser per env.conf
+├── rescuers.conf            # File di configurazione dei tipi di soccorritori
+├── emergency_types.conf     # File di configurazione dei tipi di emergenze
+├── env.conf                 # File di configurazione ambiente e coda
+├── makefile                 # Per build, esecuzione e pulizia
+└── README.md                # Questo file
+```
 
-### File header
+## File di Configurazione
 
-- **types.h**  
-  Definisce tutte le strutture dati (`struct`) ed enum utilizzate nel progetto, come `rescuer_type_t`, `rescuer_digital_twin_t`, `rescuer_request_t`, `emergency_type_t`, e `rescuers_status_t`.
+### `rescuer.conf`
+```
+[Pompieri][5][2][100;200]
+[Ambulanza][25][4][150;250]
+```
 
-- **rescuers.h**  
-  Dichiara le variabili globali `mezzi_totali` e `tot_mezzi` (array dinamico dei mezzi e relativo contatore), rendendole accessibili agli altri file tramite la parola chiave `extern`.
+### `emergency_types.conf`
+```
+[Allagamento][1] Pompieri:1,5;Ambulanza:1,2;
+[Incendio][2] Pompieri:2,8;Ambulanza:3,1;
+```
 
-- **macro.h**  
-  Contiene macro utili per la gestione delle chiamate di sistema (`SCALL`, `SCALLREAD`) e per facilitare l’estrazione dei dati dai buffer di lettura.
+### `env.conf`
+```
+queue=emergenze123456
+height=300
+width=400
+```
 
----
+## Compilazione e Esecuzione
 
-### File sorgente
+Assicurati di essere su **Linux Ubuntu 24.04+**
 
-- **parse_rescuers.c**  
-  Legge il file `rescuers.conf`, estrae i dati dei mezzi di soccorso e popola l’array globale dinamico `mezzi_totali`.  
-  Stampa una verifica dei dati caricati.
+### Compilazione
+```bash
+make
+```
 
-- **parse_emergency_types.c**  
-  Legge il file `emergency_typers.conf`, estrae le tipologie di emergenza e le richieste di mezzi per ciascuna emergenza, popolando un array dinamico di `emergency_type_t`.  
-  Stampa una verifica dei dati caricati e accede anche all’array globale dei mezzi (`mezzi_totali`).
+### Avvio del sistema
+```bash
+make run
+```
 
-- **parse_env.c**  
-  (Attualmente vuoto)  
-  File predisposto per eventuali estensioni o parsing di altri tipi di configurazione ambientale.
+### Invio emergenza da terminale
+```bash
+./client Incendio 150 200 3
+```
 
-- **main.c**  
-  (Attualmente vuoto)  
-  File predisposto per un eventuale punto di ingresso unico del programma.
+### Invio emergenze da file
+```bash
+./client -f emergenze.txt
+```
 
----
+### Pulizia
+```bash
+make clean
+```
 
-### Makefile
+## Log
 
-Permette di compilare separatamente i due parser (`parse_r` e `parse_e`) e di eseguire entrambi tramite il comando `make run`.  
-Comandi principali:
-- `make` — Compila entrambi gli eseguibili.
-- `make run` — Esegue entrambi gli eseguibili.
-- `make clean` — Rimuove gli eseguibili e i file oggetto.
+Ogni evento viene salvato in un file di log con formato:
 
----
+```
+[Timestamp] [ID] [EVENTO] Messaggio
+```
 
-## Note d’uso
+Esempi di eventi:
 
-- Per compilare:  
-  ```sh
-  make
-  ```
-- Per eseguire entrambi i parser:  
-  ```sh
-  make run
-  ```
-- Per pulire la cartella:  
-  ```sh
-  make clean
-  ```
+- `FILE_PARSING`
+- `MESSAGE_QUEUE`
+- `EMERGENCY_STATUS`
+- `RESCUER_STATUS`
 
----
+## Requisiti Tecnici
 
-## Dipendenze
+- C11 standard
+- Thread POSIX
+- Message Queue POSIX (`mq_*`)
+- Protezione chiamate di sistema
+- Meccanismi di sincronizzazione (mutex, semafori, condition variables)
+- Gestione timeout e priorità
+- Evitare deadlock e starvation (se richiesto)
 
-- Compilatore C (es: `gcc`)
-- Sistema operativo compatibile con le chiamate POSIX (`open`, `read`, ecc.)
+## Estensioni Obbligatorie (per consegne dopo 19/05/2025)
 
----
+- **Gestione Deadlock**
+- **Preemption** (interruzione interventi in corso per emergenze più gravi)
+- **Dynamic Priority Aging** (promozione delle emergenze a priorità superiore nel tempo)
 
-## Autore
+## Autori
 
-Laboratorio2-Primo — Progetto didattico per la gestione di emergenze e mezzi di soccorso in C.
+- [TUO NOME]
+- Matricola: [123456]
+- Corso: Laurea Triennale in Informatica
+- Università di Pisa
+
+## Licenza
+
+Questo progetto è realizzato esclusivamente a scopo didattico.
