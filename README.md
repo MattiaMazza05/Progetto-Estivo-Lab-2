@@ -120,8 +120,8 @@ Esempi di eventi:
 
 ## Autori
 
-- [TUO NOME]
-- Matricola: [123456]
+- Mattia Mazza
+- Matricola: 671860
 - Corso: Laurea Triennale in Informatica
 - Università di Pisa
 
