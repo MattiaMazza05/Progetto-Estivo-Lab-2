@@ -13,3 +13,10 @@
 #define FINOAPROXDATO while (buffer[i] != '[' && i<bytesRead) {i++;} i++; //questa macro cicla fino a quanto non trova una [ ovvero l'inizio di un altro dato il secondo i++ mi serve per escludere la prossima [
 
 #define ESTRAIDATO(nome_array) while (buffer[i] != ']' && i<bytesRead){nome_array[iC++] = buffer[i++];} //riempio l'array di supporto            
+
+#define MAX_MSG_Q 10
+
+#define PERROR_EXIT(messaggio) perror(messaggio); exit(1);
+#define PERROR_BREAK(messaggio) perror(messaggio); break;
+
+#define ESTRAI_EMERGENZA(campo) iC = 0; while(buffer[i] != ' ' && buffer[i] != '\n' && i < bytesRead) { campo[iC++] = buffer[i++]; } campo[iC] = '\0'; if (buffer[i] == ' ' || buffer[i] == '\n') i++; //questa macro mi permette di estrarre ogni singolo campo dall'eventuale file passato

@@ -1,8 +1,13 @@
 #include "types.h"
 #include "rescuers.h"
+#include "emergency.h"
 
 #define FILENAME "emergency_typers.conf"
 #define BUFF_DIM 256
+
+emergency_type_t *emergenze_totali =
+    NULL;              // creo un array generale per le emergenze allocando di volta in volta memoria in modo dinamico
+int tot_emergenze = 0; // questo contatore mi serve per l'allocazione di memoria
 
 int parse_emergency_types(void)
 {
@@ -12,10 +17,6 @@ int parse_emergency_types(void)
 
     char buffer[BUFF_DIM];
     ssize_t bytesRead;
-
-    emergency_type_t *emergenze_totali =
-        NULL;              // creo un array generale per le emergenze allocando di volta in volta memoria in modo dinamico
-    int tot_emergenze = 0; // questo contatore mi serve per l'allocazione di memoria
 
     SCALLREAD(
         bytesRead, read(fd, buffer, BUFF_DIM),

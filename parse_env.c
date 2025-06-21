@@ -3,6 +3,10 @@
 #define FILENAME "env.conf"
 #define BUFF_DIM 256
 
+char n_queue[BUFF_DIM];
+int height;
+int width;
+
 int parse_env(void)
 {
     int fd;
@@ -11,9 +15,7 @@ int parse_env(void)
     char buffer[BUFF_DIM];
     ssize_t bytesRead;
 
-    char n_queue[BUFF_DIM];
-    int height;
-    int width;
+
     SCALLREAD(
         bytesRead, read(fd, buffer, BUFF_DIM),
         {
