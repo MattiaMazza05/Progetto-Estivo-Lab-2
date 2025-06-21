@@ -1,13 +1,15 @@
 CC=gcc
 CFLAGS=-Wall -Wextra -g -pedantic
 
-all: output
+all: server client
 
-output: main.c parse_rescuers.c parse_emergency_types.c parse_env.c client.c
-	$(CC) $(CFLAGS) -o output main.c parse_rescuers.c parse_emergency_types.c parse_env.c client.c
+server: main.c parse_rescuers.c parse_emergency_types.c parse_env.c 
+	$(CC) $(CFLAGS) -o server main.c parse_rescuers.c parse_emergency_types.c parse_env.c 
 
-run: output
-	./output
+client: client.c parse_emergency_types.c  parse_env.c parse_rescuers.c
+	$(CC) $(CFLAGS) -o client client.c parse_emergency_types.c parse_env.c parse_rescuers.c
+run: server
+	./server
 
 clean:
-	rm -f output *.o
+	rm -f server client *.o
