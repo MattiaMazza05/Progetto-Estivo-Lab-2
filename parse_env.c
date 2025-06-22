@@ -15,7 +15,6 @@ int parse_env(void)
     char buffer[BUFF_DIM];
     ssize_t bytesRead;
 
-
     SCALLREAD(
         bytesRead, read(fd, buffer, BUFF_DIM),
         {
@@ -44,7 +43,8 @@ int parse_env(void)
                 switch (selettore)
                 {
                 case 0:
-                    strcpy(n_queue, appoggio);
+                    strcpy(n_queue, "/");     
+                    strcat(n_queue, appoggio); // in questo modo mi creo direttamente la varibile per dare il nome alla queue
                     break;
                 case 1:
                     height = atoi(appoggio);
@@ -62,10 +62,10 @@ int parse_env(void)
 
     SCALL(fd, close(fd), "⚠️ Errore durante la chiusura del file ⚠️");
 
-    printf("\n\x1b[32m========== VERIFICA DATI ENV ==========\x1b[0m\n\n");
-    printf("\x1b[36m%-20s %-10s %-10s\x1b[0m\n", "Nome coda", "Altezza", "Larghezza");
-    printf("%-20s %-10d %-10d\n", n_queue, height, width);
-    printf("\n\x1b[32m========== FINE VERIFICA ENV ==========\x1b[0m\n");
+    // printf("\n\x1b[32m========== VERIFICA DATI ENV ==========\x1b[0m\n\n");
+    // printf("\x1b[36m%-20s %-10s %-10s\x1b[0m\n", "Nome coda", "Altezza", "Larghezza");
+    // printf("%-20s %-10d %-10d\n", n_queue, height, width);
+    // printf("\n\x1b[32m========== FINE VERIFICA ENV ==========\x1b[0m\n");
 
     return 0;
 }

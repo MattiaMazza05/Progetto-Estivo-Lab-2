@@ -1,4 +1,7 @@
 #include "types.h"
+#include "rescuers.h"
+#include "emergency.h"
+#include "env.h"
 
 int parse_emergency_types(void);
 int parse_rescuers(void);
@@ -23,10 +26,21 @@ int main()
     attr.mq_msgsize = MAX_SIZE;
     attr.mq_curmsgs = 0; // mi definisco gli attibuti necessari per la coda
 
-    //printf("%d\n", tot_emergenze);
+    // printf("%d\n", tot_emergenze);
+
+    emergency_t *emergenze_valide = NULL;
+    int tot_emer_valide = 0;
+    emergency_request_t  richiesta_emer;
+    char nEmer[128];
+    char coordX[16];
+    char coordY[16];
+    char delay_in_sec[21];
 
     mq = mq_open(QUEUE_NAME, O_CREAT | O_RDONLY, 0644, &attr);
-    if (mq == -1){PERROR_EXIT("⚠️ Errore nell'apertura della message queue ⚠️");}
+    if (mq == -1)
+    {
+        PERROR_EXIT("⚠️ Errore nell'apertura della message queue ⚠️");
+    }
 
     printf("\n--- Lettura messaggi dalla coda ---\n");
     while (1)
@@ -35,14 +49,57 @@ int main()
         if (bytes_read >= 0)
         {
             buffer[bytes_read] = '\0';
-            printf("Messaggio ricevuto: %s\n", buffer);
+            int i = 0;
+            int iC = 0;
+            while (buffer[i] != '\0')
+            {
+                ESTRAI_EMER_MAIN(nEmer);
+                strcpy(richiesta_emer.emergency_name, nEmer);
+                ESTRAI_EMER_MAIN(coordX);
+                richiesta_emer.x = atoi(coordX);
+                ESTRAI_EMER_MAIN(coordY);
+                richiesta_emer.y = atoi(coordY);
+                ESTRAI_EMER_MAIN(delay_in_sec);
+                long int delay = strtol(delay_in_sec, NULL, 10);
+                richiesta_emer.timestamp = delay;
+
+                for (int i = 0; i < tot_emergenze; i++) {
+                    if (strcmp(richiesta_emer.emergency_name, emergenze_totali[i].emergency_desc)==0 && richiesta_emer.x >= 0 && richiesta_emer.x <= width && richiesta_emer.y >= 0 && richiesta_emer.y <= height && isdigit(richiesta_emer.timestamp) ) {
+
+                        emergency_t *tmp = realloc(emergenze_valide, sizeof(emergency_t) * (tot_emer_valide +1));
+                        if (tmp == NULL) {
+                            perror("⚠️ Errore durante l'assegnazione di memoria ⚠️");
+                            free(emergenze_valide);
+                            exit(EXIT_FAILURE);
+                        }
+                        emergenze_valide = tmp;
+
+                        emergenze_valide[tot_emer_valide].x = richiesta_emer.x;
+                        emergenze_valide[tot_emer_valide].y = richiesta_emer.y;
+                        emergenze_valide[tot_emer_valide].time = richiesta_emer.timestamp;
+                        
+
+                    }else {
+                        //qua inserire l'evento scartato nel file di log
+                    }
+                }
+
+                printf("\x1b[33mDati estratti:\x1b[0m\n"
+                       "  Nome emergenza: %s\n"
+                       "  Coordinate: (%s, %s)\n"
+                       "  Delay: %ld secondi\n",
+                       nEmer, coordX, coordY, delay);
+            }
             if (strcmp(buffer, MSG_STOP) == 0)
             {
                 printf("--- Fine messaggi ---\n");
                 break;
             }
         }
-        else {PERROR_BREAK("⚠️ Errore lettura dalla message queue ⚠️");}
+        else
+        {
+            PERROR_BREAK("⚠️ Errore lettura dalla message queue ⚠️");
+        }
     }
 
     mq_close(mq);

@@ -12,7 +12,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <ctype.h>
 
+#define EMERGENCY_NAME_LENGTH  64
 typedef enum
 {
     IDLE,
@@ -53,5 +55,24 @@ typedef struct{
     int rescuers_req_number;
 }emergency_type_t;
 
+typedef enum {
+    WAITING, ASSIGNED, IN_PROGRESS, PAUSED, COMPLETED, CANCELLED, TIMEOUT
+} emergency_status_t;
 
+typedef struct {
+    char emergency_name[EMERGENCY_NAME_LENGTH];
+    int x;
+    int y;
+    time_t timestamp;
+}emergency_request_t;
+
+typedef struct {
+    emergency_type_t type;
+    emergency_status_t status;
+    int x;
+    int y;
+    time_t time;
+    int rescuer_count;
+    rescuer_digital_twin_t *rescuer_dt;
+}emergency_t;
 #endif

@@ -20,3 +20,5 @@
 #define PERROR_BREAK(messaggio) perror(messaggio); break;
 
 #define ESTRAI_EMERGENZA(campo) iC = 0; while(buffer[i] != ' ' && buffer[i] != '\n' && i < bytesRead) { campo[iC++] = buffer[i++]; } campo[iC] = '\0'; if (buffer[i] == ' ' || buffer[i] == '\n') i++; //questa macro mi permette di estrarre ogni singolo campo dall'eventuale file passato
+
+#define ESTRAI_EMER_MAIN(campo) iC = 0; while(buffer[i] != ' ' && buffer[i] != '\0' ) { campo[iC++] = buffer[i++]; } campo[iC] = '\0'; if (buffer[i] == ' ' || buffer[i] == '\n') i++;

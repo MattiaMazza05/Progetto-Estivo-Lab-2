@@ -2,14 +2,15 @@
 #include "emergency.h"
 #include "env.h"
 
-#define QUEUE_NAME "/emergenze671860"
 #define MAX_SIZE 1024
 #define MSG_STOP "fileEnd"
 #define BUFF_DIM 4096
 
+int parse_env(void);
 
 int main(int argc, char *argv[])
 {
+    parse_env();
     mqd_t mq;
     char buffer[MAX_SIZE];
     switch (argc)
@@ -19,7 +20,7 @@ int main(int argc, char *argv[])
         long int delay = strtol(argv[4], NULL, 10); // questo mi serve per convertire il char in long int
         snprintf(buffer, MAX_SIZE, "%s %d %d %ld", argv[1], atoi(argv[2]), atoi(argv[3]), delay);
         // apro mq
-        mq = mq_open(QUEUE_NAME, O_RDWR, 0644);
+        mq = mq_open(n_queue, O_RDWR, 0644);
         // mando
         if (mq_send(mq, buffer, strlen(buffer) + 1, 0) == -1)
         {
@@ -55,7 +56,7 @@ int main(int argc, char *argv[])
                     long int delay = strtol(delay_in_sec, NULL, 10); 
                     snprintf(buffer, MAX_SIZE, "%s %d %d %ld", nEmer, atoi(coordX), atoi(coordY), delay);
 
-                    mq = mq_open(QUEUE_NAME, O_RDWR, 0644);
+                    mq = mq_open(n_queue, O_RDWR, 0644);
 
                     if (mq_send(mq, buffer, strlen(buffer) + 1, 0) == -1)
                     {
@@ -71,24 +72,29 @@ int main(int argc, char *argv[])
         break;
     }
     case 2: // exit
-        mq = mq_open(QUEUE_NAME, O_RDWR, 0644);
-        if (mq == -1)
+        if (strcmp("exit", argv[1]) == 0)
         {
-            PERROR_EXIT("⚠️ Errore nell'apertura della message queue ⚠️");
-        }
-        if (mq_send(mq, MSG_STOP, strlen(MSG_STOP) + 1, 0) == -1)
-        {
-            perror("🛑 Messaggio di stop non inviato nella mq 🛑");
+            mq = mq_open(n_queue, O_RDWR, 0644);
+            if (mq == -1)
+            {
+                PERROR_EXIT("⚠️ Errore nell'apertura della message queue ⚠️");
+            }
+            if (mq_send(mq, MSG_STOP, strlen(MSG_STOP) + 1, 0) == -1)
+            {
+                perror("🛑 Messaggio di stop non inviato nella mq 🛑");
+                if (mq_close(mq) == -1)
+                {
+                    PERROR_EXIT("⚠️ Errore chiusura coda ⚠️");
+                }
+            }
+            printf("\x1b[33mMessaggio di stop inviato. Il client termina.\x1b[0m\n");
             if (mq_close(mq) == -1)
             {
                 PERROR_EXIT("⚠️ Errore chiusura coda ⚠️");
             }
+            break;
         }
-        printf("\x1b[33mMessaggio di stop inviato. Il client termina.\x1b[0m\n");
-        if (mq_close(mq) == -1)
-        {
-            PERROR_EXIT("⚠️ Errore chiusura coda ⚠️");
-        }
+        printf("Il messaggio non è valido, digita ./client per avere le istruzioni\n");
         break;
     default:
         printf(
