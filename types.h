@@ -73,6 +73,6 @@ typedef struct {
     int y;
     time_t time;
     int rescuer_count;
-    rescuer_digital_twin_t *rescuer_dt;
+    rescuer_digital_twin_t *rescuers_dt;
 }emergency_t;
 #endif

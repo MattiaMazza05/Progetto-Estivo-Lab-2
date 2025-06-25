@@ -18,7 +18,6 @@ int main()
     parse_env();
     mqd_t mq;
     char buffer[MAX_SIZE];
-
     struct mq_attr attr;
 
     attr.mq_flags = 0;
@@ -30,7 +29,7 @@ int main()
 
     emergency_t *emergenze_valide = NULL;
     int tot_emer_valide = 0;
-    emergency_request_t  richiesta_emer;
+    emergency_request_t richiesta_emer;
     char nEmer[128];
     char coordX[16];
     char coordY[16];
@@ -63,32 +62,36 @@ int main()
                 long int delay = strtol(delay_in_sec, NULL, 10);
                 richiesta_emer.timestamp = delay;
 
-                for (int i = 0; i < tot_emergenze; i++) {
-                    if (strcmp(richiesta_emer.emergency_name, emergenze_totali[i].emergency_desc)==0 && richiesta_emer.x >= 0 && richiesta_emer.x <= width && richiesta_emer.y >= 0 && richiesta_emer.y <= height && isdigit(richiesta_emer.timestamp) ) {
+                for (int i = 0; i < tot_emergenze; i++)
+                {
+                    if (strcmp(richiesta_emer.emergency_name, emergenze_totali[i].emergency_desc) == 0 && richiesta_emer.x >= 0 && richiesta_emer.x <= width && richiesta_emer.y >= 0 && richiesta_emer.y <= height && richiesta_emer.timestamp >= 0)
+                    {
 
-                        emergency_t *tmp = realloc(emergenze_valide, sizeof(emergency_t) * (tot_emer_valide +1));
-                        if (tmp == NULL) {
+                        emergency_t *tmp = realloc(emergenze_valide, sizeof(emergency_t) * (tot_emer_valide + 1));
+                        if (tmp == NULL)
+                        {
                             perror("⚠️ Errore durante l'assegnazione di memoria ⚠️");
                             free(emergenze_valide);
                             exit(EXIT_FAILURE);
                         }
                         emergenze_valide = tmp;
-
                         emergenze_valide[tot_emer_valide].x = richiesta_emer.x;
                         emergenze_valide[tot_emer_valide].y = richiesta_emer.y;
                         emergenze_valide[tot_emer_valide].time = richiesta_emer.timestamp;
-                        
+                        for (int i = 0; i < tot_emergenze; i++)
+                        {
+                            if (strcmp(emergenze_totali[i].emergency_desc, richiesta_emer.emergency_name) == 0)
+                            {
+                                emergenze_valide[tot_emer_valide].type = emergenze_totali[i];
+                                emergenze_valide[tot_emer_valide].rescuer_count = emergenze_totali[i].rescuers_req_number;
+                                
+                            }
+                        }
 
-                    }else {
-                        //qua inserire l'evento scartato nel file di log
+                        tot_emer_valide++;
                     }
+                    // qua inserire l'evento scartato nel file di log
                 }
-
-                printf("\x1b[33mDati estratti:\x1b[0m\n"
-                       "  Nome emergenza: %s\n"
-                       "  Coordinate: (%s, %s)\n"
-                       "  Delay: %ld secondi\n",
-                       nEmer, coordX, coordY, delay);
             }
             if (strcmp(buffer, MSG_STOP) == 0)
             {
@@ -101,6 +104,26 @@ int main()
             PERROR_BREAK("⚠️ Errore lettura dalla message queue ⚠️");
         }
     }
+
+    // Stampa dettagliata di tutte le emergenze valide
+    printf("\n\x1b[35m=========== RIEPILOGO EMERGENZE PROCESSATE (%d) ===========\x1b[0m\n", tot_emer_valide);
+
+    for (int i = 0; i < tot_emer_valide; i++)
+    {
+        printf("\n\x1b[33mEMERGENZA #%d\x1b[0m\n", i + 1);
+        printf("  \x1b[36mTipo:\x1b[0m %s\n", emergenze_valide[i].type.emergency_desc);
+        printf("  \x1b[36mPriorità:\x1b[0m %d\n", emergenze_valide[i].type.priority);
+        printf("  \x1b[36mCoordinate:\x1b[0m (%d, %d)\n", emergenze_valide[i].x, emergenze_valide[i].y);
+        printf("  \x1b[36mTimestamp:\x1b[0m %ld\n", emergenze_valide[i].time);
+        printf("  \x1b[36mSoccorritori richiesti:\x1b[0m %d\n", emergenze_valide[i].rescuer_count);
+
+        // Stampa dettagli dei soccorritori
+        printf("  \x1b[36mSoccorritori:\x1b[0m\n");
+
+        printf("  \x1b[32m--------------------------------------\x1b[0m\n");
+    }
+
+    printf("\n\x1b[35m=========================================================\x1b[0m\n");
 
     mq_close(mq);
     mq_unlink(QUEUE_NAME); // opzionale: elimina la coda

@@ -122,38 +122,38 @@ int parse_emergency_types(void)
 
     SCALL(fd, close(fd), "⚠️ Errore durante la chiusura del file ⚠️");
 
-    // printf("\n\x1b[32m========== VERIFICA EMERGENZE ==========\x1b[0m\n\n");
-    // printf("\x1b[36m%-3s %-15s %-8s %-8s %-15s %-8s %-8s %-10s\x1b[0m\n",
-    //        "ID", "Nome", "Priorità", "Rich#", "Tipo", "Quantità", "Tempo", "Velocità");
+    printf("\n\x1b[32m========== VERIFICA EMERGENZE ==========\x1b[0m\n\n");
+    printf("\x1b[36m%-3s %-15s %-8s %-8s %-15s %-8s %-8s %-10s\x1b[0m\n",
+           "ID", "Nome", "Priorità", "Rich#", "Tipo", "Quantità", "Tempo", "Velocità");
 
-    // for (int e = 0; e < tot_emergenze; e++)
-    // {
-    //     int req_num = emergenze_totali[e].rescuers_req_number;
-    //     for (int r = 0; r < req_num; r++)
-    //     {
-    //         printf("%-3d %-15s %-8d %-8d ",
-    //                e + 1,
-    //                emergenze_totali[e].emergency_desc,
-    //                emergenze_totali[e].priority,
-    //                req_num);
-    //         if (emergenze_totali[e].rescuers[r].type)
-    //         {
-    //             printf("%-15s %-8d %-8d %-10d\n",
-    //                    emergenze_totali[e].rescuers[r].type->rescuer_type_name,
-    //                    emergenze_totali[e].rescuers[r].required_count,
-    //                    emergenze_totali[e].rescuers[r].time_to_manage,
-    //                    emergenze_totali[e].rescuers[r].type->speed);
-    //         }
-    //         else
-    //         {
-    //             printf("\x1b[31m%-15s\x1b[0m %-8d %-8d %-10s\n",
-    //                    "NON ASSEGNATO",
-    //                    emergenze_totali[e].rescuers[r].required_count,
-    //                    emergenze_totali[e].rescuers[r].time_to_manage,
-    //                    "-");
-    //         }
-    //     }
-    // }
-    // printf("\n\x1b[32m========== FINE VERIFICA EMERGENZE ==========\x1b[0m\n");
+    for (int e = 0; e < tot_emergenze; e++)
+    {
+        int req_num = emergenze_totali[e].rescuers_req_number;
+        for (int r = 0; r < req_num; r++)
+        {
+            printf("%-3d %-15s %-8d %-8d ",
+                   e + 1,
+                   emergenze_totali[e].emergency_desc,
+                   emergenze_totali[e].priority,
+                   req_num);
+            if (emergenze_totali[e].rescuers[r].type)
+            {
+                printf("%-15s %-8d %-8d %-10d\n",
+                       emergenze_totali[e].rescuers[r].type->rescuer_type_name,
+                       emergenze_totali[e].rescuers[r].required_count,
+                       emergenze_totali[e].rescuers[r].time_to_manage,
+                       emergenze_totali[e].rescuers[r].type->speed);
+            }
+            else
+            {
+                printf("\x1b[31m%-15s\x1b[0m %-8d %-8d %-10s\n",
+                       "NON ASSEGNATO",
+                       emergenze_totali[e].rescuers[r].required_count,
+                       emergenze_totali[e].rescuers[r].time_to_manage,
+                       "-");
+            }
+        }
+    }
+    printf("\n\x1b[32m========== FINE VERIFICA EMERGENZE ==========\x1b[0m\n");
     return 0;
 }
