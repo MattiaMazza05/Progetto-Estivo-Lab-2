@@ -25,8 +25,6 @@ int main()
     attr.mq_msgsize = MAX_SIZE;
     attr.mq_curmsgs = 0; // mi definisco gli attibuti necessari per la coda
 
-    // printf("%d\n", tot_emergenze);
-
     emergency_t *emergenze_valide = NULL;
     int tot_emer_valide = 0;
     emergency_request_t richiesta_emer;
@@ -75,16 +73,22 @@ int main()
                             exit(EXIT_FAILURE);
                         }
                         emergenze_valide = tmp;
+                        emergenze_valide[tot_emer_valide].status = WAITING;
                         emergenze_valide[tot_emer_valide].x = richiesta_emer.x;
                         emergenze_valide[tot_emer_valide].y = richiesta_emer.y;
                         emergenze_valide[tot_emer_valide].time = richiesta_emer.timestamp;
-                        for (int i = 0; i < tot_emergenze; i++)
+                        emergenze_valide[tot_emer_valide].type = emergenze_totali[i];
+                        emergenze_valide[tot_emer_valide].rescuer_count = emergenze_totali[i].rescuers_req_number;
+
+                        emergenze_valide[tot_emer_valide].rescuers_dt = malloc(emergenze_valide[tot_emer_valide].rescuer_count * sizeof(rescuer_digital_twin_t));
+                        for (int j = 0; j < emergenze_totali[i].rescuers_req_number; j++)
                         {
-                            if (strcmp(emergenze_totali[i].emergency_desc, richiesta_emer.emergency_name) == 0)
+                            for (int k = 0; k < tot_mezzi; k++)
                             {
-                                emergenze_valide[tot_emer_valide].type = emergenze_totali[i];
-                                emergenze_valide[tot_emer_valide].rescuer_count = emergenze_totali[i].rescuers_req_number;
-                                
+                                if (strcmp(emergenze_totali[i].rescuers[j].type->rescuer_type_name, mezzi_totali[k].rescuer->rescuer_type_name) == 0)
+                                {
+                                    emergenze_valide[tot_emer_valide].rescuers_dt[j] = mezzi_totali[k];
+                                }
                             }
                         }
 
@@ -105,27 +109,77 @@ int main()
         }
     }
 
-    // Stampa dettagliata di tutte le emergenze valide
-    printf("\n\x1b[35m=========== RIEPILOGO EMERGENZE PROCESSATE (%d) ===========\x1b[0m\n", tot_emer_valide);
+    printf("\n=== RIEPILOGO EMERGENZE VALIDATE (%d) ===\n\n", tot_emer_valide);
 
+    if (tot_emer_valide == 0)
+    {
+        printf("Nessuna emergenza valida registrata\n\n");
+    }
+    else
+    {
+        for (int i = 0; i < tot_emer_valide; i++)
+        {
+            // Converti timestamp in data/ora leggibile
+            char time_str[30];
+            struct tm *timeinfo = localtime(&emergenze_valide[i].time);
+            strftime(time_str, sizeof(time_str), "%d-%m-%Y %H:%M:%S", timeinfo);
+
+            // Ottieni descrizione dello stato
+            char *status_desc;
+            switch (emergenze_valide[i].status)
+            {
+            case WAITING:
+                status_desc = "In attesa";
+                break;
+            case ASSIGNED:
+                status_desc = "Assegnata";
+                break;
+            case IN_PROGRESS:
+                status_desc = "In corso";
+                break;
+            case COMPLETED:
+                status_desc = "Completata";
+                break;
+            case CANCELLED:
+                status_desc = "Annullata";
+                break;
+            default:
+                status_desc = "Sconosciuto";
+                break;
+            }
+
+            printf("\n--- EMERGENZA #%d ---\n", i + 1);
+            printf("Tipo: %s\n", emergenze_valide[i].type.emergency_desc);
+            printf("Stato: %s\n", status_desc);
+            printf("Priorità: %d\n", emergenze_valide[i].type.priority);
+            printf("Coordinate: (%d, %d)\n", emergenze_valide[i].x, emergenze_valide[i].y);
+            printf("Timestamp: %s\n", time_str);
+            printf("Soccorritori: %d\n", emergenze_valide[i].rescuer_count);
+
+            if (emergenze_valide[i].rescuers_dt != NULL)
+            {
+                printf("MEZZI DI SOCCORSO:\n");
+                for (int j = 0; j < emergenze_valide[i].rescuer_count; j++)
+                {
+                    printf("  %d. %s\n", j + 1, emergenze_valide[i].rescuers_dt[j].rescuer->rescuer_type_name);
+                }
+            }
+            else
+            {
+                printf("Nessun soccorritore\n");
+            }
+            printf("---------------------------\n\n");
+        }
+    }
+    printf("=== FINE REPORT ===\n\n");
+    // Libera memoria prima di uscire
     for (int i = 0; i < tot_emer_valide; i++)
     {
-        printf("\n\x1b[33mEMERGENZA #%d\x1b[0m\n", i + 1);
-        printf("  \x1b[36mTipo:\x1b[0m %s\n", emergenze_valide[i].type.emergency_desc);
-        printf("  \x1b[36mPriorità:\x1b[0m %d\n", emergenze_valide[i].type.priority);
-        printf("  \x1b[36mCoordinate:\x1b[0m (%d, %d)\n", emergenze_valide[i].x, emergenze_valide[i].y);
-        printf("  \x1b[36mTimestamp:\x1b[0m %ld\n", emergenze_valide[i].time);
-        printf("  \x1b[36mSoccorritori richiesti:\x1b[0m %d\n", emergenze_valide[i].rescuer_count);
-
-        // Stampa dettagli dei soccorritori
-        printf("  \x1b[36mSoccorritori:\x1b[0m\n");
-
-        printf("  \x1b[32m--------------------------------------\x1b[0m\n");
+        free(emergenze_valide[i].rescuers_dt);
     }
-
-    printf("\n\x1b[35m=========================================================\x1b[0m\n");
+    free(emergenze_valide);
 
     mq_close(mq);
-    mq_unlink(QUEUE_NAME); // opzionale: elimina la coda
+    mq_unlink(QUEUE_NAME);
     return 0;
 }
