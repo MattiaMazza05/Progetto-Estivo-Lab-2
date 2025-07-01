@@ -22,3 +22,9 @@
 #define ESTRAI_EMERGENZA(campo) iC = 0; while(buffer[i] != ' ' && buffer[i] != '\n' && i < bytesRead) { campo[iC++] = buffer[i++]; } campo[iC] = '\0'; if (buffer[i] == ' ' || buffer[i] == '\n') i++; //questa macro mi permette di estrarre ogni singolo campo dall'eventuale file passato
 
 #define ESTRAI_EMER_MAIN(campo) iC = 0; while(buffer[i] != ' ' && buffer[i] != '\0' ) { campo[iC++] = buffer[i++]; } campo[iC] = '\0'; if (buffer[i] == ' ' || buffer[i] == '\n') i++;
+
+#define PRIORITY_0 0
+#define PRIORITY_1 30
+#define PRIORITY_2 10
+
+#define DISTANZA_MANHATTAN(x1,y1,x2,y2, vel_socc) int ris1 = abs(x1-x2); int ris2 = abs(y1-y2); int d = (ris1 + ris2)/vel_socc 

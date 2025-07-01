@@ -13,6 +13,9 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <ctype.h>
+#include <threads.h>
+#include <stdbool.h>
+
 
 #define EMERGENCY_NAME_LENGTH  64
 typedef enum

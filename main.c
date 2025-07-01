@@ -7,9 +7,42 @@ int parse_emergency_types(void);
 int parse_rescuers(void);
 int parse_env(void);
 
-#define QUEUE_NAME "/emergenze671860"
 #define MAX_SIZE 1024
 #define MSG_STOP "fileEnd"
+
+emergency_t *emergenze_valide = NULL;
+int tot_emer_valide = 0;
+
+mtx_t mutex_soccorritori;
+
+int gestione_emer(void *arg)
+{
+    int emer_id = *(int *)arg;
+    emergency_t *emergenza = &emergenze_valide[emer_id - 1];
+
+    //calcolo il tempo massimo in base alla priorità
+    time_t t_limite = 0;
+    switch (emergenza->type.priority)
+    {
+    case 1:
+        t_limite = time(NULL) + PRIORITY_1;
+        break;
+
+    case 2:
+        t_limite = time(NULL) + PRIORITY_2;
+        break;
+    
+    default:
+        t_limite = 0;
+        break;
+    }
+
+
+    mtx_lock(&mutex_soccorritori);
+    bool tutti_disp = true;
+    
+}
+
 
 int main()
 {
@@ -25,15 +58,13 @@ int main()
     attr.mq_msgsize = MAX_SIZE;
     attr.mq_curmsgs = 0; // mi definisco gli attibuti necessari per la coda
 
-    emergency_t *emergenze_valide = NULL;
-    int tot_emer_valide = 0;
     emergency_request_t richiesta_emer;
     char nEmer[128];
     char coordX[16];
     char coordY[16];
     char delay_in_sec[21];
 
-    mq = mq_open(QUEUE_NAME, O_CREAT | O_RDONLY, 0644, &attr);
+    mq = mq_open(n_queue, O_CREAT | O_RDONLY, 0644, &attr);
     if (mq == -1)
     {
         PERROR_EXIT("⚠️ Errore nell'apertura della message queue ⚠️");
@@ -109,8 +140,16 @@ int main()
         }
     }
 
-    printf("\n=== RIEPILOGO EMERGENZE VALIDATE (%d) ===\n\n", tot_emer_valide);
+    thrd_t emergenze[tot_emer_valide];
+    int id_emer[tot_emer_valide];
 
+    for (int i = 0; i < tot_emer_valide; i++)
+    {
+        id_emer[i] += 1;
+        thrd_create(&emergenze[i], gestione_emer, &id_emer[i]);
+    }
+
+    printf("\n=== RIEPILOGO EMERGENZE VALIDATE (%d) ===\n\n", tot_emer_valide);
     if (tot_emer_valide == 0)
     {
         printf("Nessuna emergenza valida registrata\n\n");
@@ -172,7 +211,7 @@ int main()
         }
     }
     printf("=== FINE REPORT ===\n\n");
-    // Libera memoria prima di uscire
+
     for (int i = 0; i < tot_emer_valide; i++)
     {
         free(emergenze_valide[i].rescuers_dt);
@@ -180,6 +219,6 @@ int main()
     free(emergenze_valide);
 
     mq_close(mq);
-    mq_unlink(QUEUE_NAME);
+    mq_unlink(n_queue);
     return 0;
 }
