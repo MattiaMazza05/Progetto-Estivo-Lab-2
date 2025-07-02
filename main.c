@@ -18,9 +18,9 @@ mtx_t mutex_soccorritori;
 int gestione_emer(void *arg)
 {
     int emer_id = *(int *)arg;
-    emergency_t *emergenza = &emergenze_valide[emer_id - 1];
+    emergency_t *emergenza = &emergenze_valide[emer_id - 1]; //-1 perchè le emergenze partono da 0 mentre gli id dei thread da 1
 
-    //calcolo il tempo massimo in base alla priorità
+    // calcolo il tempo massimo in base alla priorità
     time_t t_limite = 0;
     switch (emergenza->type.priority)
     {
@@ -31,18 +31,45 @@ int gestione_emer(void *arg)
     case 2:
         t_limite = time(NULL) + PRIORITY_2;
         break;
-    
+
     default:
         t_limite = 0;
         break;
     }
 
-
     mtx_lock(&mutex_soccorritori);
-    bool tutti_disp = true;
-    
-}
 
+    for (int i = 0; i < tot_emergenze; i++)
+    {
+        if (strcmp(emergenza->type.emergency_desc, emergenze_totali[i].emergency_desc) == 0)
+        {
+            bool tutti_disponibili = true;
+
+            for (int j = 0; j < emergenze_totali[i].rescuers_req_number; j++)
+            {
+                int mezzi_disponibili = 0;
+
+                for (int k = 0; k < tot_mezzi; k++)
+                {
+                    if (strcmp(emergenze_totali[i].rescuers[j].type->rescuer_type_name, mezzi_totali[k].rescuer->rescuer_type_name) == 0)
+                    {
+                        if (mezzi_totali[k].status == IDLE)
+                        {
+                            mezzi_disponibili++;
+                        }
+                    }
+                }
+                if (mezzi_disponibili < emergenze_totali[i].rescuers[j].required_count)
+                {
+                    tutti_disponibili = false;
+                    break;
+                }
+            }
+        }
+    }
+    mtx_unlock(&mutex_soccorritori);
+    return 0;
+}
 
 int main()
 {
@@ -142,11 +169,18 @@ int main()
 
     thrd_t emergenze[tot_emer_valide];
     int id_emer[tot_emer_valide];
+    mtx_init(&mutex_soccorritori, mtx_plain);
 
     for (int i = 0; i < tot_emer_valide; i++)
     {
-        id_emer[i] += 1;
+        id_emer[i] = i + 1;
         thrd_create(&emergenze[i], gestione_emer, &id_emer[i]);
+    }
+
+    for (int i = 0; i < tot_emer_valide; i++)
+    {
+        thrd_join(emergenze[i], NULL);
+        printf("Thread %d terminato\n", i + 1);
     }
 
     printf("\n=== RIEPILOGO EMERGENZE VALIDATE (%d) ===\n\n", tot_emer_valide);
