@@ -27,4 +27,4 @@
 #define PRIORITY_1 30
 #define PRIORITY_2 10
 
-#define DISTANZA_MANHATTAN(x1,y1,x2,y2, vel_socc) int ris1 = abs(x1-x2); int ris2 = abs(y1-y2); int d = (ris1 + ris2)/vel_socc 
+#define DISTANZA_MANHATTAN(x1,y1,x2,y2, vel_socc) int ris1 = abs(x1-x2); int ris2 = abs(y1-y2); int vel = (ris1 + ris2)/vel_socc 
