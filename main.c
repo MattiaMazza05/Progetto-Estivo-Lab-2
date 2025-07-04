@@ -64,7 +64,9 @@ int gestione_emer(void *arg)
 
                             if (!tipo_calcolato)
                             {
-                                DISTANZA_MANHATTAN(mezzi_totali[k].x, mezzi_totali[k].y, emergenza->x, emergenza->y, mezzi_totali[k].rescuer->speed);
+                                DISTANZA_MANHATTAN(mezzi_totali[k].x, mezzi_totali[k].y,
+                                                   emergenza->x, emergenza->y,
+                                                   mezzi_totali[k].rescuer->speed);
 
                                 tempo_tipo_mezzo = vel;
                                 tipo_calcolato = true;
@@ -75,10 +77,21 @@ int gestione_emer(void *arg)
 
                 tipi_mezzi_controllati++;
 
+                if (tempo_tipo_mezzo > tempo_totale)
+                    tempo_totale = tempo_tipo_mezzo;
+
+                // CONTROLLO TIMEOUT ANTICIPATO
+                if (tempo_totale > t_limite)
+                {
+                    emergenza->status = TIMEOUT;
+                    tutti_disponibili = false;
+                    break; // ESCI DAL LOOP - NON CONTINUARE
+                }
+
                 if (mezzi_disponibili < mezzi_necessari)
                 {
                     tutti_disponibili = false;
-                    break;
+                    break; // ESCI DAL LOOP - NON CONTINUARE
                 }
                 else
                 {
@@ -97,32 +110,51 @@ int gestione_emer(void *arg)
                         }
                     }
                 }
+            }
+            sleep(tempo_totale);
 
-                if (tempo_tipo_mezzo > tempo_totale)
+            // CONTROLLO FINALE: PROCEDI SOLO SE TUTTO OK
+            if (tutti_disponibili && tempo_totale <= t_limite)
+            {
+                emergenza->status = IN_PROGRESS;
+
+
+                // FASE 1: VIAGGIO VERSO EMERGENZA
+                sleep(tempo_totale);
+
+                // FASE 2: GESTIONE EMERGENZA
+                int tempo_totale_gestire = 0;
+                int tempo_gestire_soccorritore = 0;
+
+                CAMBIO_STATO_SOCCORRITORE_CON_TEMPO(tempo_gestire_soccorritore, tempo_totale_gestire, EN_ROUTE_TO_SCENE, ON_SCENE);
+
+                sleep(tempo_totale_gestire);
+
+                // FASE 3: RITORNO ALLA BASE
+                CAMBIO_STATO_SOCCORRITORE(ON_SCENE, RETURNING_TO_BASE);
+
+                sleep(tempo_totale);
+
+                // FASE 4: LIBERAZIONE MEZZI
+                CAMBIO_STATO_SOCCORRITORE(RETURNING_TO_BASE, IDLE);
+
+                // COMPLETAMENTO EMERGENZA
+                emergenza->status = COMPLETED;
+            }
+            else
+            {
+                // EMERGENZA FALLITA - NON FARE NIENTE
+                if (!tutti_disponibili)
                 {
-                    tempo_totale = tempo_tipo_mezzo;
+                    emergenza->status = WAITING;
+                }
+                else if (tempo_totale > t_limite)
+                {
+                    emergenza->status = TIMEOUT;
                 }
             }
 
-            if (tempo_totale <= t_limite && tutti_disponibili)
-            {
-                emergenza->status = IN_PROGRESS;
-            }else{
-                emergenza->status = TIMEOUT;
-            }
 
-            // RIEPILOGO COMPLETO THREAD
-            printf("\n========== RIEPILOGO THREAD %d ==========\n", emer_id);
-            printf("📋 EMERGENZA: %s\n", emergenza->type.emergency_desc);
-            printf("📍 POSIZIONE: (%d, %d)\n", emergenza->x, emergenza->y);
-            printf("⚡ PRIORITÀ: %d (limite: %ld sec)\n", emergenza->type.priority, t_limite);
-            printf("🔍 TIPI MEZZI CONTROLLATI: %d/%d\n", tipi_mezzi_controllati, emergenze_totali[i].rescuers_req_number);
-            printf("⏰ TEMPO MASSIMO CALCOLATO: %d secondi\n", tempo_totale);
-            printf("🚑 MEZZI TOTALI ASSEGNATI: %d\n", mezzi_totali_assegnati);
-            printf("✅ TUTTI MEZZI DISPONIBILI: %s\n", tutti_disponibili ? "SÌ" : "NO");
-            printf("⏱️ RISPETTA TEMPO LIMITE: %s\n", (tempo_totale <= t_limite) ? "SÌ" : "NO");
-            printf("STATUS FINALE: %d\n", emergenza->status);
-            printf("=========================================\n\n");
 
             break;
         }
