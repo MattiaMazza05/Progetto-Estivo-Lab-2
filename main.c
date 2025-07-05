@@ -80,18 +80,17 @@ int gestione_emer(void *arg)
                 if (tempo_tipo_mezzo > tempo_totale)
                     tempo_totale = tempo_tipo_mezzo;
 
-                // CONTROLLO TIMEOUT ANTICIPATO
                 if (tempo_totale > t_limite)
                 {
                     emergenza->status = TIMEOUT;
                     tutti_disponibili = false;
-                    break; // ESCI DAL LOOP - NON CONTINUARE
+                    break;
                 }
 
                 if (mezzi_disponibili < mezzi_necessari)
                 {
                     tutti_disponibili = false;
-                    break; // ESCI DAL LOOP - NON CONTINUARE
+                    break;
                 }
                 else
                 {
@@ -113,16 +112,12 @@ int gestione_emer(void *arg)
             }
             sleep(tempo_totale);
 
-            // CONTROLLO FINALE: PROCEDI SOLO SE TUTTO OK
             if (tutti_disponibili && tempo_totale <= t_limite)
             {
                 emergenza->status = IN_PROGRESS;
 
-
-                // FASE 1: VIAGGIO VERSO EMERGENZA
                 sleep(tempo_totale);
 
-                // FASE 2: GESTIONE EMERGENZA
                 int tempo_totale_gestire = 0;
                 int tempo_gestire_soccorritore = 0;
 
@@ -130,20 +125,16 @@ int gestione_emer(void *arg)
 
                 sleep(tempo_totale_gestire);
 
-                // FASE 3: RITORNO ALLA BASE
                 CAMBIO_STATO_SOCCORRITORE(ON_SCENE, RETURNING_TO_BASE);
 
                 sleep(tempo_totale);
 
-                // FASE 4: LIBERAZIONE MEZZI
                 CAMBIO_STATO_SOCCORRITORE(RETURNING_TO_BASE, IDLE);
 
-                // COMPLETAMENTO EMERGENZA
                 emergenza->status = COMPLETED;
             }
             else
             {
-                // EMERGENZA FALLITA - NON FARE NIENTE
                 if (!tutti_disponibili)
                 {
                     emergenza->status = WAITING;
@@ -153,8 +144,6 @@ int gestione_emer(void *arg)
                     emergenza->status = TIMEOUT;
                 }
             }
-
-
 
             break;
         }
@@ -184,6 +173,12 @@ int main()
     char coordY[16];
     char delay_in_sec[21];
 
+    // dichiarazione array dinamico thread e inizializzazione mutex
+    thrd_t *emergenze = NULL;
+    int *id_emer = NULL;
+    int thread_c = 0; // contatore per i thread
+    mtx_init(&mutex_soccorritori, mtx_plain);
+
     mq = mq_open(n_queue, O_CREAT | O_RDONLY, 0644, &attr);
     if (mq == -1)
     {
@@ -197,6 +192,16 @@ int main()
         if (bytes_read >= 0)
         {
             buffer[bytes_read] = '\0';
+            if (strcmp(buffer, MSG_STOP) == 0)
+            {
+                for (int i = 0; i < thread_c; i++)
+                {
+                    thrd_join(emergenze[i], NULL);
+                    printf("Thread %d terminato\n", id_emer[i]);
+                }
+                printf("--- Comando exit ricevuto - Chiusura server ---\n");
+                break;
+            }
             int i = 0;
             int iC = 0;
             while (buffer[i] != '\0')
@@ -244,36 +249,40 @@ int main()
                         }
 
                         tot_emer_valide++;
+
+                        emergenze = realloc(emergenze, sizeof(thrd_t) * (thread_c + 1));
+                        id_emer = realloc(id_emer, sizeof(int) * (thread_c + 1));
+
+                        if (emergenze == NULL || id_emer == NULL)
+                        {
+                            PERROR_EXIT("⚠️ Errore allocazione memoria thread ⚠️");
+                        }
+
+                        id_emer[thread_c] = tot_emer_valide; // in questo modo l'id del thread è il numero di emergenza
+
+                        printf("🚨 Emergenza ricevuta: %s (%d,%d) - Creazione Thread %d\n",
+                               richiesta_emer.emergency_name,
+                               richiesta_emer.x, richiesta_emer.y,
+                               id_emer[thread_c]);
+
+                        if (thrd_create(&emergenze[thread_c], gestione_emer, &id_emer[thread_c]) != thrd_success)
+                        {
+                            printf("❌ Errore creazione thread per emergenza %d\n", id_emer[thread_c]);
+                        }
+                        else
+                        {
+                            printf("✅ Thread %d avviato per gestione emergenza\n", id_emer[thread_c]);
+                            thread_c++;
+                        }
                     }
                     // qua inserire l'evento scartato nel file di log
                 }
-            }
-            if (strcmp(buffer, MSG_STOP) == 0)
-            {
-                printf("--- Fine messaggi ---\n");
-                break;
             }
         }
         else
         {
             PERROR_BREAK("⚠️ Errore lettura dalla message queue ⚠️");
         }
-    }
-
-    thrd_t emergenze[tot_emer_valide];
-    int id_emer[tot_emer_valide];
-    mtx_init(&mutex_soccorritori, mtx_plain);
-
-    for (int i = 0; i < tot_emer_valide; i++)
-    {
-        id_emer[i] = i + 1;
-        thrd_create(&emergenze[i], gestione_emer, &id_emer[i]);
-    }
-
-    for (int i = 0; i < tot_emer_valide; i++)
-    {
-        thrd_join(emergenze[i], NULL);
-        printf("Thread %d terminato\n", i + 1);
     }
 
     // printf("\n=== RIEPILOGO EMERGENZE VALIDATE (%d) ===\n\n", tot_emer_valide);
