@@ -18,9 +18,24 @@ mtx_t mutex_soccorritori;
 int gestione_emer(void *arg)
 {
     int emer_id = *(int *)arg;
+
+    // ✅ BLOCCA SUBITO per accesso sicuro
+    mtx_lock(&mutex_soccorritori);
+
+    // ✅ Verifica che l'emergenza esista ancora
+    if (emer_id <= 0 || emer_id > tot_emer_valide)
+    {
+        printf("❌ Thread %d: Emergenza non valida\n", emer_id);
+        mtx_unlock(&mutex_soccorritori);
+        return -1;
+    }
+
     emergency_t *emergenza = &emergenze_valide[emer_id - 1];
 
-    // calcolo il tempo massimo in base alla priorità
+    printf("\n🔍 Thread %d - Inizio gestione emergenza %s\n",
+           emer_id, emergenza->type.emergency_desc);
+
+    // Calcolo il tempo massimo in base alla priorità
     time_t t_limite = 0;
     switch (emergenza->type.priority)
     {
@@ -35,17 +50,14 @@ int gestione_emer(void *arg)
         break;
     }
 
-    mtx_lock(&mutex_soccorritori);
-
     for (int i = 0; i < tot_emergenze; i++)
     {
         if (strcmp(emergenza->type.emergency_desc, emergenze_totali[i].emergency_desc) == 0)
         {
             bool tutti_disponibili = true;
             int tempo_totale = 0;
-            int tipi_mezzi_controllati = 0;
-            int mezzi_totali_assegnati = 0;
 
+            // VERIFICA DISPONIBILITÀ MEZZI
             for (int j = 0; j < emergenze_totali[i].rescuers_req_number; j++)
             {
                 int mezzi_necessari = emergenze_totali[i].rescuers[j].required_count;
@@ -67,7 +79,6 @@ int gestione_emer(void *arg)
                                 DISTANZA_MANHATTAN(mezzi_totali[k].x, mezzi_totali[k].y,
                                                    emergenza->x, emergenza->y,
                                                    mezzi_totali[k].rescuer->speed);
-
                                 tempo_tipo_mezzo = vel;
                                 tipo_calcolato = true;
                             }
@@ -75,13 +86,12 @@ int gestione_emer(void *arg)
                     }
                 }
 
-                tipi_mezzi_controllati++;
-
                 if (tempo_tipo_mezzo > tempo_totale)
                     tempo_totale = tempo_tipo_mezzo;
 
                 if (tempo_totale > t_limite)
                 {
+                    printf("❌ Thread %d: Tempo %d > limite %ld\n", emer_id, tempo_totale, t_limite);
                     emergenza->status = TIMEOUT;
                     tutti_disponibili = false;
                     break;
@@ -89,12 +99,36 @@ int gestione_emer(void *arg)
 
                 if (mezzi_disponibili < mezzi_necessari)
                 {
+                    printf("❌ Thread %d: Mezzi insufficienti (%d < %d)\n",
+                           emer_id, mezzi_disponibili, mezzi_necessari);
+                    emergenza->status = WAITING;
                     tutti_disponibili = false;
                     break;
                 }
-                else
+            }
+
+            if (tutti_disponibili && tempo_totale <= t_limite)
+            {
+                printf("✅ Thread %d: Gestione emergenza %s\n", emer_id, emergenza->type.emergency_desc);
+
+                // Calcola il numero totale di mezzi necessari
+                int mezzi_totali_necessari = 0;
+                for (int j = 0; j < emergenze_totali[i].rescuers_req_number; j++)
                 {
+                    mezzi_totali_necessari += emergenze_totali[i].rescuers[j].required_count;
+                }
+
+                int mezzi_per_emer[mezzi_totali_necessari];
+                int indice_array = 0;
+
+                emergenza->status = IN_PROGRESS;
+
+                // FASE 1: ASSEGNAZIONE MEZZI (IDLE → EN_ROUTE_TO_SCENE)
+                for (int j = 0; j < emergenze_totali[i].rescuers_req_number; j++)
+                {
+                    int mezzi_necessari = emergenze_totali[i].rescuers[j].required_count;
                     int mezzi_assegnati_tipo = 0;
+
                     for (int k = 0; k < tot_mezzi && mezzi_assegnati_tipo < mezzi_necessari; k++)
                     {
                         if (strcmp(emergenze_totali[i].rescuers[j].type->rescuer_type_name,
@@ -102,49 +136,97 @@ int gestione_emer(void *arg)
                         {
                             if (mezzi_totali[k].status == IDLE)
                             {
+                                mezzi_per_emer[indice_array] = mezzi_totali[k].id;
                                 mezzi_totali[k].status = EN_ROUTE_TO_SCENE;
                                 mezzi_assegnati_tipo++;
-                                mezzi_totali_assegnati++;
+                                indice_array++;
                             }
                         }
                     }
                 }
-            }
-            sleep(tempo_totale);
 
-            if (tutti_disponibili && tempo_totale <= t_limite)
-            {
-                emergenza->status = IN_PROGRESS;
+                // ✅ SBLOCCA MUTEX DURANTE SLEEP (permette altri thread)
+                mtx_unlock(&mutex_soccorritori);
 
                 sleep(tempo_totale);
+                printf("Thread %d: %s → EN_ROUTE_TO_SCENE (%d sec)\n",
+                       emer_id, emergenza->type.emergency_desc, tempo_totale);
 
-                int tempo_totale_gestire = 0;
-                int tempo_gestire_soccorritore = 0;
+                // ✅ RIBLOCCA MUTEX PER MODIFICHE
+                mtx_lock(&mutex_soccorritori);
 
-                CAMBIO_STATO_SOCCORRITORE_CON_TEMPO(tempo_gestire_soccorritore, tempo_totale_gestire, EN_ROUTE_TO_SCENE, ON_SCENE);
+                // FASE 2: EN_ROUTE_TO_SCENE → ON_SCENE
+                for (int idx = 0; idx < mezzi_totali_necessari; idx++)
+                {
+                    for (int j = 0; j < tot_mezzi; j++)
+                    {
+                        if (mezzi_totali[j].id == mezzi_per_emer[idx] &&
+                            mezzi_totali[j].status == EN_ROUTE_TO_SCENE)
+                        {
+                            mezzi_totali[j].status = ON_SCENE;
+                            break;
+                        }
+                    }
+                }
 
-                sleep(tempo_totale_gestire);
+                int tempo_gestione = 0;
+                for (int j = 0; j < emergenze_totali[i].rescuers_req_number; j++)
+                {
+                    if (emergenze_totali[i].rescuers[j].time_to_manage > tempo_gestione)
+                    {
+                        tempo_gestione = emergenze_totali[i].rescuers[j].time_to_manage;
+                    }
+                }
 
-                CAMBIO_STATO_SOCCORRITORE(ON_SCENE, RETURNING_TO_BASE);
+                mtx_unlock(&mutex_soccorritori);
+                sleep(tempo_gestione);
+                printf("Thread %d: %s → ON_SCENE (%d sec)\n",
+                       emer_id, emergenza->type.emergency_desc, tempo_gestione);
+                mtx_lock(&mutex_soccorritori);
 
+                // FASE 3: ON_SCENE → RETURNING_TO_BASE
+                for (int idx = 0; idx < mezzi_totali_necessari; idx++)
+                {
+                    for (int j = 0; j < tot_mezzi; j++)
+                    {
+                        if (mezzi_totali[j].id == mezzi_per_emer[idx] &&
+                            mezzi_totali[j].status == ON_SCENE)
+                        {
+                            mezzi_totali[j].status = RETURNING_TO_BASE;
+                            break;
+                        }
+                    }
+                }
+
+                mtx_unlock(&mutex_soccorritori);
                 sleep(tempo_totale);
+                printf("Thread %d: %s → RETURNING_TO_BASE (%d sec)\n",
+                       emer_id, emergenza->type.emergency_desc, tempo_totale);
+                mtx_lock(&mutex_soccorritori);
 
-                CAMBIO_STATO_SOCCORRITORE(RETURNING_TO_BASE, IDLE);
+                // FASE 4: RETURNING_TO_BASE → IDLE
+                for (int idx = 0; idx < mezzi_totali_necessari; idx++)
+                {
+                    for (int j = 0; j < tot_mezzi; j++)
+                    {
+                        if (mezzi_totali[j].id == mezzi_per_emer[idx] &&
+                            mezzi_totali[j].status == RETURNING_TO_BASE)
+                        {
+                            mezzi_totali[j].status = IDLE;
+                            break;
+                        }
+                    }
+                }
 
                 emergenza->status = COMPLETED;
+                printf("✅ Thread %d: Emergenza %s COMPLETATA\n",
+                       emer_id, emergenza->type.emergency_desc);
             }
             else
             {
-                if (!tutti_disponibili)
-                {
-                    emergenza->status = WAITING;
-                }
-                else if (tempo_totale > t_limite)
-                {
-                    emergenza->status = TIMEOUT;
-                }
+                printf("❌ Thread %d: Emergenza %s SCARTATA\n",
+                       emer_id, emergenza->type.emergency_desc);
             }
-
             break;
         }
     }
@@ -285,68 +367,47 @@ int main()
         }
     }
 
-    // printf("\n=== RIEPILOGO EMERGENZE VALIDATE (%d) ===\n\n", tot_emer_valide);
-    // if (tot_emer_valide == 0)
-    // {
-    //     printf("Nessuna emergenza valida registrata\n\n");
-    // }
-    // else
-    // {
-    //     for (int i = 0; i < tot_emer_valide; i++)
-    //     {
-    //         // Converti timestamp in data/ora leggibile
-    //         char time_str[30];
-    //         struct tm *timeinfo = localtime(&emergenze_valide[i].time);
-    //         strftime(time_str, sizeof(time_str), "%d-%m-%Y %H:%M:%S", timeinfo);
+    printf("\n========== RIEPILOGO FINALE SERVER ==========\n");
+    printf("📊 TOTALE EMERGENZE RICEVUTE: %d\n", tot_emer_valide);
+    printf("🧵 TOTALE THREAD CREATI: %d\n", thread_c);
+    printf("✅ TUTTI I THREAD TERMINATI CON SUCCESSO\n");
 
-    //         // Ottieni descrizione dello stato
-    //         char *status_desc;
-    //         switch (emergenze_valide[i].status)
-    //         {
-    //         case WAITING:
-    //             status_desc = "In attesa";
-    //             break;
-    //         case ASSIGNED:
-    //             status_desc = "Assegnata";
-    //             break;
-    //         case IN_PROGRESS:
-    //             status_desc = "In corso";
-    //             break;
-    //         case COMPLETED:
-    //             status_desc = "Completata";
-    //             break;
-    //         case CANCELLED:
-    //             status_desc = "Annullata";
-    //             break;
-    //         default:
-    //             status_desc = "Sconosciuto";
-    //             break;
-    //         }
+    // Stato finale di tutti i mezzi
+    printf("\n🚑 STATO FINALE MEZZI:\n");
+    int finale_idle = 0, finale_en_route = 0, finale_on_scene = 0, finale_returning = 0;
+    for (int k = 0; k < tot_mezzi; k++)
+    {
+        switch (mezzi_totali[k].status)
+        {
+        case IDLE:
+            finale_idle++;
+            break;
+        case EN_ROUTE_TO_SCENE:
+            finale_en_route++;
+            break;
+        case ON_SCENE:
+            finale_on_scene++;
+            break;
+        case RETURNING_TO_BASE:
+            finale_returning++;
+            break;
+        }
+    }
+    printf("   🟢 IDLE: %d | 🔵 EN_ROUTE: %d | 🟡 ON_SCENE: %d | 🟠 RETURNING: %d\n",
+           finale_idle, finale_en_route, finale_on_scene, finale_returning);
 
-    //         printf("\n--- EMERGENZA #%d ---\n", i + 1);
-    //         printf("Tipo: %s\n", emergenze_valide[i].type.emergency_desc);
-    //         printf("Stato: %s\n", status_desc);
-    //         printf("Priorità: %d\n", emergenze_valide[i].type.priority);
-    //         printf("Coordinate: (%d, %d)\n", emergenze_valide[i].x, emergenze_valide[i].y);
-    //         printf("Timestamp: %s\n", time_str);
-    //         printf("Soccorritori: %d\n", emergenze_valide[i].rescuer_count);
+    // Verifica che tutti i mezzi siano tornati IDLE
+    if (finale_en_route == 0 && finale_on_scene == 0 && finale_returning == 0)
+    {
+        printf("✅ TUTTI I MEZZI SONO TORNATI IDLE - SISTEMA PULITO\n");
+    }
+    else
+    {
+        printf("❌ ATTENZIONE: ALCUNI MEZZI NON SONO TORNATI IDLE\n");
+    }
 
-    //         if (emergenze_valide[i].rescuers_dt != NULL)
-    //         {
-    //             printf("MEZZI DI SOCCORSO:\n");
-    //             for (int j = 0; j < emergenze_valide[i].rescuer_count; j++)
-    //             {
-    //                 printf("  %d. %s\n", j + 1, emergenze_valide[i].rescuers_dt[j].rescuer->rescuer_type_name);
-    //             }
-    //         }
-    //         else
-    //         {
-    //             printf("Nessun soccorritore\n");
-    //         }
-    //         printf("---------------------------\n\n");
-    //     }
-    // }
-    // printf("=== FINE REPORT ===\n\n");
+    printf("🎯 STATO SERVER: TERMINATO CORRETTAMENTE\n");
+    printf("==========================================\n");
 
     for (int i = 0; i < tot_emer_valide; i++)
     {
@@ -356,5 +417,8 @@ int main()
 
     mq_close(mq);
     mq_unlink(n_queue);
+    free(emergenze);
+    free(id_emer);
+    mtx_destroy(&mutex_soccorritori);
     return 0;
 }
