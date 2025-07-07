@@ -2,6 +2,7 @@
 #include "rescuers.h"
 #include "emergency.h"
 #include "env.h"
+#include "log.h"
 
 int parse_emergency_types(void);
 int parse_rescuers(void);
@@ -178,6 +179,7 @@ int gestione_emer(void *arg)
 
 int main()
 {
+    crea_log("progetto_estivo.log");
     parse_rescuers();
     parse_emergency_types();
     parse_env();
@@ -196,11 +198,11 @@ int main()
     char coordY[16];
     char delay_in_sec[21];
 
-    // dichiarazione array dinamico thread e inizializzazione mutex
     thrd_t emergenze[MAX_MSG_Q];
     int id_emer[MAX_MSG_Q];
     int thread_c = 0; // contatore per i thread
     mtx_init(&mutex_soccorritori, mtx_plain);
+    
 
     mq = mq_open(n_queue, O_CREAT | O_RDONLY, 0644, &attr);
     if (mq == -1)
@@ -356,5 +358,6 @@ int main()
     mq_close(mq);
     mq_unlink(n_queue);
     mtx_destroy(&mutex_soccorritori);
+    chiudi_log();
     return 0;
 }

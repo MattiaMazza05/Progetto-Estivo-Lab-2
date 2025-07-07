@@ -15,9 +15,18 @@
 #include <ctype.h>
 #include <threads.h>
 #include <stdbool.h>
-
+#include <stdarg.h>
 
 #define EMERGENCY_NAME_LENGTH  64
+
+#define PRIORITY_0 0
+#define PRIORITY_1 30
+#define PRIORITY_2 10
+
+#define MAX_MSG_Q 10
+
+#define LOG_FILE "progetto_estivo.log"
+#define MAX_LOG_MSG 1024
 typedef enum
 {
     IDLE,

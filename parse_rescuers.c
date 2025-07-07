@@ -1,5 +1,6 @@
 #include "types.h"
 #include "rescuers.h"
+#include "log.h"
 #define FILENAME "rescuers.conf"
 #define BUFF_DIM 128
 
@@ -8,13 +9,14 @@ int tot_mezzi = 0;                           // questo contatore mi serve per l'
 
 int parse_rescuers(void)
 {
-    int fd;
-    SCALL(fd, open(FILENAME, O_RDONLY), "⚠️ Non sono riuscito ad aprire il file di configurazione ⚠️");
+    int fd_conf;
+    SCALL(fd_conf, open(FILENAME, O_RDONLY), "⚠️ Non sono riuscito ad aprire il file di configurazione ⚠️");
+    scrivi_log("PARSE_RESCUER", "FILE_PARSING", "Apertura file di configurazione per i RESCUERS");
 
     char buffer[BUFF_DIM];
     ssize_t bytesRead;
 
-    SCALLREAD(bytesRead, read(fd, buffer, BUFF_DIM), {
+    SCALLREAD(bytesRead, read(fd_conf, buffer, BUFF_DIM), {
         int i = 0;
         char nome[128];
         char nV[16]; // nV (numeroVeicoli) indice che mi serve per riempire i char di appoggio
@@ -70,7 +72,6 @@ int parse_rescuers(void)
                 rescuer->y = y;
                 rescuer->rescuer_type_name = malloc(strlen(nome)+1); //alloco memoria dinamica in base al nome, il +1 mi serve per allocare memoria anche per lo \0
                 strcpy(rescuer->rescuer_type_name, nome);//ora copio nome dentro la struct
-                // printf("Il veicolo è: \x1b[35m%s\x1b[0m ci sono \x1b[35m%d\x1b[0m veicoli totali con una velocità di \x1b[35m%d\x1b[0m caselle al secondo e la posizione della base è: \x1b[35m[%d;%d]\x1b[0m\n", rescuer->rescuer_type_name, nVeicoli, rescuer->speed, rescuer->x, rescuer->y);
 
 
                 for (int i = 0; i < nVeicoli; i++)
@@ -85,7 +86,7 @@ int parse_rescuers(void)
                 tot_mezzi += nVeicoli;
             }else i++;
         } }, "⚠️ Errore durante la lettura del file");
-    SCALL(fd, close(fd), "⚠️ Errore durante la chiusura del file");
+    SCALL(fd_conf, close(fd_conf), "⚠️ Errore durante la chiusura del file di CONFIGURAZIONE ⚠️");
 
      printf("\n\x1b[32m========== VERIFICA MEZZI TOTALI ==========\x1b[0m\n\n");
      printf("\x1b[36m%-4s %-12s %-12s %-12s %-10s %-8s\x1b[0m\n", "ID", "Tipo", "Posizione", "Velocità", "Stato", "Coord");

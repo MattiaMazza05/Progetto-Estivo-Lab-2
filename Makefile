@@ -1,15 +1,22 @@
 CC=gcc
-CFLAGS=-Wall -Wextra -g -pedantic
+CFLAGS=-Wall -Wextra -g -pedantic -std=c11
+LIBS = -lpthread
+
+OBJS=parse_rescuers.o parse_emergency_types.o parse_env.o log.o
 
 all: server client
 
-server: main.c parse_rescuers.c parse_emergency_types.c parse_env.c 
-	$(CC) $(CFLAGS) -o server main.c parse_rescuers.c parse_emergency_types.c parse_env.c 
+%.o: %.c
+	$(CC) -c $(CFLAGS) $< -o $@
 
-client: client.c parse_emergency_types.c  parse_env.c parse_rescuers.c
-	$(CC) $(CFLAGS) -o client client.c parse_emergency_types.c parse_env.c parse_rescuers.c
+server: main.o $(OBJS)
+	$(CC) $(CFLAGS) -o server main.o $(OBJS)
+
+client: client.o $(OBJS)
+	$(CC) $(CFLAGS) -o client client.o $(OBJS)
+
 run: server
 	./server
 
 clean:
-	rm -f server client *.o
+	rm -f server client *.o *.log
