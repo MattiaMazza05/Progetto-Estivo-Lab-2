@@ -9,8 +9,9 @@ int parse_env(void);
 
 #define MAX_SIZE 1024
 #define MSG_STOP "fileEnd"
+#define MAX_EMERGENZE 100
 
-emergency_t *emergenze_valide = NULL;
+emergency_t emergenze_valide[MAX_EMERGENZE];
 int tot_emer_valide = 0;
 
 mtx_t mutex_soccorritori;
@@ -18,11 +19,7 @@ mtx_t mutex_soccorritori;
 int gestione_emer(void *arg)
 {
     int emer_id = *(int *)arg;
-
-    // ✅ BLOCCA SUBITO per accesso sicuro
     mtx_lock(&mutex_soccorritori);
-
-    // ✅ Verifica che l'emergenza esista ancora
     if (emer_id <= 0 || emer_id > tot_emer_valide)
     {
         printf("❌ Thread %d: Emergenza non valida\n", emer_id);
@@ -57,7 +54,6 @@ int gestione_emer(void *arg)
             bool tutti_disponibili = true;
             int tempo_totale = 0;
 
-            // VERIFICA DISPONIBILITÀ MEZZI
             for (int j = 0; j < emergenze_totali[i].rescuers_req_number; j++)
             {
                 int mezzi_necessari = emergenze_totali[i].rescuers[j].required_count;
@@ -111,7 +107,6 @@ int gestione_emer(void *arg)
             {
                 printf("✅ Thread %d: Gestione emergenza %s\n", emer_id, emergenza->type.emergency_desc);
 
-                // Calcola il numero totale di mezzi necessari
                 int mezzi_totali_necessari = 0;
                 for (int j = 0; j < emergenze_totali[i].rescuers_req_number; j++)
                 {
@@ -123,7 +118,6 @@ int gestione_emer(void *arg)
 
                 emergenza->status = IN_PROGRESS;
 
-                // FASE 1: ASSEGNAZIONE MEZZI (IDLE → EN_ROUTE_TO_SCENE)
                 for (int j = 0; j < emergenze_totali[i].rescuers_req_number; j++)
                 {
                     int mezzi_necessari = emergenze_totali[i].rescuers[j].required_count;
@@ -144,18 +138,13 @@ int gestione_emer(void *arg)
                         }
                     }
                 }
-
-                // ✅ SBLOCCA MUTEX DURANTE SLEEP (permette altri thread)
                 mtx_unlock(&mutex_soccorritori);
-
                 sleep(tempo_totale);
                 printf("Thread %d: %s → EN_ROUTE_TO_SCENE (%d sec)\n",
                        emer_id, emergenza->type.emergency_desc, tempo_totale);
 
-                // ✅ RIBLOCCA MUTEX PER MODIFICHE
-                mtx_lock(&mutex_soccorritori);
 
-                // FASE 2: EN_ROUTE_TO_SCENE → ON_SCENE
+                mtx_lock(&mutex_soccorritori);
                 for (int idx = 0; idx < mezzi_totali_necessari; idx++)
                 {
                     for (int j = 0; j < tot_mezzi; j++)
@@ -168,7 +157,6 @@ int gestione_emer(void *arg)
                         }
                     }
                 }
-
                 int tempo_gestione = 0;
                 for (int j = 0; j < emergenze_totali[i].rescuers_req_number; j++)
                 {
@@ -177,14 +165,12 @@ int gestione_emer(void *arg)
                         tempo_gestione = emergenze_totali[i].rescuers[j].time_to_manage;
                     }
                 }
-
                 mtx_unlock(&mutex_soccorritori);
                 sleep(tempo_gestione);
                 printf("Thread %d: %s → ON_SCENE (%d sec)\n",
                        emer_id, emergenza->type.emergency_desc, tempo_gestione);
-                mtx_lock(&mutex_soccorritori);
 
-                // FASE 3: ON_SCENE → RETURNING_TO_BASE
+                mtx_lock(&mutex_soccorritori);
                 for (int idx = 0; idx < mezzi_totali_necessari; idx++)
                 {
                     for (int j = 0; j < tot_mezzi; j++)
@@ -197,14 +183,13 @@ int gestione_emer(void *arg)
                         }
                     }
                 }
-
                 mtx_unlock(&mutex_soccorritori);
                 sleep(tempo_totale);
                 printf("Thread %d: %s → RETURNING_TO_BASE (%d sec)\n",
                        emer_id, emergenza->type.emergency_desc, tempo_totale);
-                mtx_lock(&mutex_soccorritori);
 
-                // FASE 4: RETURNING_TO_BASE → IDLE
+
+                mtx_lock(&mutex_soccorritori);
                 for (int idx = 0; idx < mezzi_totali_necessari; idx++)
                 {
                     for (int j = 0; j < tot_mezzi; j++)
@@ -217,7 +202,6 @@ int gestione_emer(void *arg)
                         }
                     }
                 }
-
                 emergenza->status = COMPLETED;
                 printf("✅ Thread %d: Emergenza %s COMPLETATA\n",
                        emer_id, emergenza->type.emergency_desc);
@@ -256,8 +240,8 @@ int main()
     char delay_in_sec[21];
 
     // dichiarazione array dinamico thread e inizializzazione mutex
-    thrd_t *emergenze = NULL;
-    int *id_emer = NULL;
+    thrd_t emergenze[MAX_MSG_Q];
+    int id_emer[MAX_MSG_Q];
     int thread_c = 0; // contatore per i thread
     mtx_init(&mutex_soccorritori, mtx_plain);
 
@@ -279,7 +263,6 @@ int main()
                 for (int i = 0; i < thread_c; i++)
                 {
                     thrd_join(emergenze[i], NULL);
-                    printf("Thread %d terminato\n", id_emer[i]);
                 }
                 printf("--- Comando exit ricevuto - Chiusura server ---\n");
                 break;
@@ -300,62 +283,59 @@ int main()
 
                 for (int i = 0; i < tot_emergenze; i++)
                 {
+                    emergenze_valide[tot_emer_valide].status = WAITING;
                     if (strcmp(richiesta_emer.emergency_name, emergenze_totali[i].emergency_desc) == 0 && richiesta_emer.x >= 0 && richiesta_emer.x <= width && richiesta_emer.y >= 0 && richiesta_emer.y <= height && richiesta_emer.timestamp >= 0)
                     {
 
-                        emergency_t *tmp = realloc(emergenze_valide, sizeof(emergency_t) * (tot_emer_valide + 1));
-                        if (tmp == NULL)
+                        if (tot_emer_valide < MAX_EMERGENZE)
                         {
-                            perror("⚠️ Errore durante l'assegnazione di memoria ⚠️");
-                            free(emergenze_valide);
-                            exit(EXIT_FAILURE);
-                        }
-                        emergenze_valide = tmp;
-                        emergenze_valide[tot_emer_valide].status = WAITING;
-                        emergenze_valide[tot_emer_valide].x = richiesta_emer.x;
-                        emergenze_valide[tot_emer_valide].y = richiesta_emer.y;
-                        emergenze_valide[tot_emer_valide].time = richiesta_emer.timestamp;
-                        emergenze_valide[tot_emer_valide].type = emergenze_totali[i];
-                        emergenze_valide[tot_emer_valide].rescuer_count = emergenze_totali[i].rescuers_req_number;
+                            emergenze_valide[tot_emer_valide].status = ASSIGNED;
+                            emergenze_valide[tot_emer_valide].x = richiesta_emer.x;
+                            emergenze_valide[tot_emer_valide].y = richiesta_emer.y;
+                            emergenze_valide[tot_emer_valide].time = richiesta_emer.timestamp;
+                            emergenze_valide[tot_emer_valide].type = emergenze_totali[i];
+                            emergenze_valide[tot_emer_valide].rescuer_count = emergenze_totali[i].rescuers_req_number;
 
-                        emergenze_valide[tot_emer_valide].rescuers_dt = malloc(emergenze_valide[tot_emer_valide].rescuer_count * sizeof(rescuer_digital_twin_t));
-                        for (int j = 0; j < emergenze_totali[i].rescuers_req_number; j++)
-                        {
-                            for (int k = 0; k < tot_mezzi; k++)
+                            emergenze_valide[tot_emer_valide].rescuers_dt = malloc(emergenze_valide[tot_emer_valide].rescuer_count * sizeof(rescuer_digital_twin_t));
+                            for (int j = 0; j < emergenze_totali[i].rescuers_req_number; j++)
                             {
-                                if (strcmp(emergenze_totali[i].rescuers[j].type->rescuer_type_name, mezzi_totali[k].rescuer->rescuer_type_name) == 0)
+                                for (int k = 0; k < tot_mezzi; k++)
                                 {
-                                    emergenze_valide[tot_emer_valide].rescuers_dt[j] = mezzi_totali[k];
+                                    if (strcmp(emergenze_totali[i].rescuers[j].type->rescuer_type_name, mezzi_totali[k].rescuer->rescuer_type_name) == 0)
+                                    {
+                                        emergenze_valide[tot_emer_valide].rescuers_dt[j] = mezzi_totali[k];
+                                    }
                                 }
                             }
+
+                            tot_emer_valide++;
+                            if (thread_c < MAX_MSG_Q)
+                            {
+                                // Assegna l'ID dell'emergenza (basato su posizione nell'array)
+                                id_emer[thread_c] = tot_emer_valide; // L'ultima emergenza aggiunta
+
+                                printf("🚨 Creazione Thread %d per emergenza: %s (%d,%d)\n",
+                                       id_emer[thread_c], emergenze_valide[tot_emer_valide - 1].type.emergency_desc,
+                                       emergenze_valide[tot_emer_valide - 1].x, emergenze_valide[tot_emer_valide - 1].y);
+
+                                // Crea il thread che gestisce questa emergenza
+                                if (thrd_create(&emergenze[thread_c], gestione_emer, &id_emer[thread_c]) != thrd_success)
+                                {
+                                    printf("❌ Errore creazione thread per emergenza %d\n", id_emer[thread_c]);
+                                }
+                                else
+                                {
+                                    printf("✅ Thread %d avviato per gestione emergenza\n", id_emer[thread_c]);
+                                    thread_c++; // Incrementa solo se creazione riuscita
+                                }
+                            }
+                            else
+                            {
+                                printf("⚠️ Raggiunto limite massimo di thread (%d)\n", MAX_MSG_Q);
+                            }
                         }
-
-                        tot_emer_valide++;
-
-                        emergenze = realloc(emergenze, sizeof(thrd_t) * (thread_c + 1));
-                        id_emer = realloc(id_emer, sizeof(int) * (thread_c + 1));
-
-                        if (emergenze == NULL || id_emer == NULL)
-                        {
-                            PERROR_EXIT("⚠️ Errore allocazione memoria thread ⚠️");
-                        }
-
-                        id_emer[thread_c] = tot_emer_valide; // in questo modo l'id del thread è il numero di emergenza
-
-                        printf("🚨 Emergenza ricevuta: %s (%d,%d) - Creazione Thread %d\n",
-                               richiesta_emer.emergency_name,
-                               richiesta_emer.x, richiesta_emer.y,
-                               id_emer[thread_c]);
-
-                        if (thrd_create(&emergenze[thread_c], gestione_emer, &id_emer[thread_c]) != thrd_success)
-                        {
-                            printf("❌ Errore creazione thread per emergenza %d\n", id_emer[thread_c]);
-                        }
-                        else
-                        {
-                            printf("✅ Thread %d avviato per gestione emergenza\n", id_emer[thread_c]);
-                            thread_c++;
-                        }
+                    }else{
+                        emergenze_valide[tot_emer_valide].status = CANCELLED;
                     }
                     // qua inserire l'evento scartato nel file di log
                 }
@@ -413,12 +393,9 @@ int main()
     {
         free(emergenze_valide[i].rescuers_dt);
     }
-    free(emergenze_valide);
 
     mq_close(mq);
     mq_unlink(n_queue);
-    free(emergenze);
-    free(id_emer);
     mtx_destroy(&mutex_soccorritori);
     return 0;
 }
