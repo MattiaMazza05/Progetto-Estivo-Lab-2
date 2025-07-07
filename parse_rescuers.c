@@ -63,6 +63,7 @@ int parse_rescuers(void)
                 rescuer_digital_twin_t *tmp = realloc(mezzi_totali, sizeof(rescuer_digital_twin_t) * (tot_mezzi + nVeicoli));//eseguo un controllo per assicurarmi che l'allocazione sia andata a buon fine
                 if (tmp == NULL) {
                     perror("⚠️ Errore durante l'assegnazione di memoria ⚠️");
+                    //aggiungi LOG
                     free(mezzi_totali);
                     exit(EXIT_FAILURE); 
                 }
@@ -81,6 +82,13 @@ int parse_rescuers(void)
                     mezzi_totali[tot_mezzi +i].y = y;
                     mezzi_totali[tot_mezzi +i].status = IDLE;
                     mezzi_totali[tot_mezzi +i].rescuer = rescuer;
+                    char id_rescuer[16];
+                    char nome_soccorritore[64];
+                    snprintf(id_rescuer, sizeof(id_rescuer), "%d", mezzi_totali[tot_mezzi + i].id);
+                    snprintf(nome_soccorritore, sizeof(nome_soccorritore), "%s", mezzi_totali[tot_mezzi + i].rescuer->rescuer_type_name);
+                    char log_msg[128];
+                    snprintf(log_msg, sizeof(log_msg), "Letta la riga - Soccorritore: %s", nome_soccorritore);
+                    scrivi_log(id_rescuer, "FILE_PARSING", log_msg);
                 }
                 
                 tot_mezzi += nVeicoli;
@@ -88,18 +96,18 @@ int parse_rescuers(void)
         } }, "⚠️ Errore durante la lettura del file");
     SCALL(fd_conf, close(fd_conf), "⚠️ Errore durante la chiusura del file di CONFIGURAZIONE ⚠️");
 
-     printf("\n\x1b[32m========== VERIFICA MEZZI TOTALI ==========\x1b[0m\n\n");
-     printf("\x1b[36m%-4s %-12s %-12s %-12s %-10s %-8s\x1b[0m\n", "ID", "Tipo", "Posizione", "Velocità", "Stato", "Coord");
-     for (int i = 0; i < tot_mezzi; i++)
-     {
-         printf("%-4d %-12s [%2d,%2d]     %-12d %-10d [%2d,%2d]\n",
+    printf("\n\x1b[32m========== VERIFICA MEZZI TOTALI ==========\x1b[0m\n\n");
+    printf("\x1b[36m%-4s %-12s %-12s %-12s %-10s %-8s\x1b[0m\n", "ID", "Tipo", "Posizione", "Velocità", "Stato", "Coord");
+    for (int i = 0; i < tot_mezzi; i++)
+    {
+        printf("%-4d %-12s [%2d,%2d]     %-12d %-10d [%2d,%2d]\n",
                mezzi_totali[i].id,
-                mezzi_totali[i].rescuer->rescuer_type_name,
-                mezzi_totali[i].x, mezzi_totali[i].y,
-                mezzi_totali[i].rescuer->speed,
-                mezzi_totali[i].status,
-                mezzi_totali[i].rescuer->x, mezzi_totali[i].rescuer->y);
-     }
-     printf("\n\x1b[32m========== FINE VERIFICA MEZZI ==========\x1b[0m\n");
+               mezzi_totali[i].rescuer->rescuer_type_name,
+               mezzi_totali[i].x, mezzi_totali[i].y,
+               mezzi_totali[i].rescuer->speed,
+               mezzi_totali[i].status,
+               mezzi_totali[i].rescuer->x, mezzi_totali[i].rescuer->y);
+    }
+    printf("\n\x1b[32m========== FINE VERIFICA MEZZI ==========\x1b[0m\n");
     return 0;
 }
