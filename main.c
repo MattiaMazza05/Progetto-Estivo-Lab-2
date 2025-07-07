@@ -136,18 +136,7 @@ int gestione_emer(void *arg)
                        emer_id, emergenza->type.emergency_desc, tempo_totale);
 
                 mtx_lock(&mutex_soccorritori);
-                for (int idx = 0; idx < mezzi_totali_necessari; idx++)
-                {
-                    for (int j = 0; j < tot_mezzi; j++)
-                    {
-                        if (mezzi_totali[j].id == mezzi_per_emer[idx] &&
-                            mezzi_totali[j].status == EN_ROUTE_TO_SCENE)
-                        {
-                            mezzi_totali[j].status = ON_SCENE;
-                            break;
-                        }
-                    }
-                }
+                CAMBIO_STATO(EN_ROUTE_TO_SCENE, ON_SCENE);
                 int tempo_gestione = 0;
                 for (int j = 0; j < emergenze_totali[i].rescuers_req_number; j++)
                 {
@@ -162,36 +151,14 @@ int gestione_emer(void *arg)
                        emer_id, emergenza->type.emergency_desc, tempo_gestione);
 
                 mtx_lock(&mutex_soccorritori);
-                for (int idx = 0; idx < mezzi_totali_necessari; idx++)
-                {
-                    for (int j = 0; j < tot_mezzi; j++)
-                    {
-                        if (mezzi_totali[j].id == mezzi_per_emer[idx] &&
-                            mezzi_totali[j].status == ON_SCENE)
-                        {
-                            mezzi_totali[j].status = RETURNING_TO_BASE;
-                            break;
-                        }
-                    }
-                }
+                CAMBIO_STATO(ON_SCENE, RETURNING_TO_BASE)
                 mtx_unlock(&mutex_soccorritori);
                 sleep(tempo_totale);
                 printf("Thread %d: %s → RETURNING_TO_BASE (%d sec)\n",
                        emer_id, emergenza->type.emergency_desc, tempo_totale);
 
                 mtx_lock(&mutex_soccorritori);
-                for (int idx = 0; idx < mezzi_totali_necessari; idx++)
-                {
-                    for (int j = 0; j < tot_mezzi; j++)
-                    {
-                        if (mezzi_totali[j].id == mezzi_per_emer[idx] &&
-                            mezzi_totali[j].status == RETURNING_TO_BASE)
-                        {
-                            mezzi_totali[j].status = IDLE;
-                            break;
-                        }
-                    }
-                }
+                CAMBIO_STATO(RETURNING_TO_BASE, IDLE);
                 emergenza->status = COMPLETED;
                 printf("✅ Thread %d: Emergenza %s COMPLETATA\n",
                        emer_id, emergenza->type.emergency_desc);
