@@ -87,17 +87,9 @@ int gestione_emer(void *arg)
 
                 if (tempo_totale > t_limite)
                 {
-                    printf("❌ Thread %d: Tempo %d > limite %ld\n", emer_id, tempo_totale, t_limite);
-                    emergenza->status = TIMEOUT;
-                    tutti_disponibili = false;
-                    break;
-                }
-
-                if (mezzi_disponibili < mezzi_necessari)
-                {
-                    printf("❌ Thread %d: Mezzi insufficienti (%d < %d)\n",
+                    printf("❌ Thread %d: Tempo %d > limite %ld OPPURE ❌ Thread %d: Mezzi insufficienti (%d < %d)\n", emer_id, tempo_totale, t_limite,
                            emer_id, mezzi_disponibili, mezzi_necessari);
-                    emergenza->status = WAITING;
+                    emergenza->status = TIMEOUT;
                     tutti_disponibili = false;
                     break;
                 }
@@ -143,7 +135,6 @@ int gestione_emer(void *arg)
                 printf("Thread %d: %s → EN_ROUTE_TO_SCENE (%d sec)\n",
                        emer_id, emergenza->type.emergency_desc, tempo_totale);
 
-
                 mtx_lock(&mutex_soccorritori);
                 for (int idx = 0; idx < mezzi_totali_necessari; idx++)
                 {
@@ -187,7 +178,6 @@ int gestione_emer(void *arg)
                 sleep(tempo_totale);
                 printf("Thread %d: %s → RETURNING_TO_BASE (%d sec)\n",
                        emer_id, emergenza->type.emergency_desc, tempo_totale);
-
 
                 mtx_lock(&mutex_soccorritori);
                 for (int idx = 0; idx < mezzi_totali_necessari; idx++)
@@ -334,7 +324,9 @@ int main()
                                 printf("⚠️ Raggiunto limite massimo di thread (%d)\n", MAX_MSG_Q);
                             }
                         }
-                    }else{
+                    }
+                    else
+                    {
                         emergenze_valide[tot_emer_valide].status = CANCELLED;
                     }
                     // qua inserire l'evento scartato nel file di log
