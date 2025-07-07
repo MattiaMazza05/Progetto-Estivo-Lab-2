@@ -1,9 +1,3 @@
-//includo librerie che mi servono in tutti i file
-#include <fcntl.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <stdio.h>
-
 //macro per chiamata di sistema
 #define SCALL_ERROR -1
 #define SCALL(r, c, e) do{if((r = c) == SCALL_ERROR) {perror(e); exit(EXIT_FAILURE);}} while(0)
