@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS=-Wall -Wextra -g -pedantic -std=c11
 LIBS = -lpthread
 
-OBJS=parse_rescuers.o parse_emergency_types.o parse_env.o log.o
+OBJS=parse_rescuers.o parse_emergency_types.o parse_env.o log.o gestione_thread.o
 
 all: server client
 

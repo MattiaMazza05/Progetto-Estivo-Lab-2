@@ -3,6 +3,7 @@
 #include "emergency.h"
 #include "env.h"
 #include "log.h"
+#include "gestione_thread.h"
 
 int parse_emergency_types(void);
 int parse_rescuers(void);
@@ -14,12 +15,12 @@ int parse_env(void);
 
 emergency_t emergenze_valide[MAX_EMERGENZE];
 int tot_emer_valide = 0;
-
 mtx_t mutex_soccorritori;
 
 int gestione_emer(void *arg)
 {
-    int emer_id = *(int *)arg;
+    thread_slot_t *slot = (thread_slot_t *)arg;
+    int emer_id = slot->emer_id;
     mtx_lock(&mutex_soccorritori);
     if (emer_id <= 0 || emer_id > tot_emer_valide)
     {
@@ -29,7 +30,6 @@ int gestione_emer(void *arg)
     }
 
     emergency_t *emergenza = &emergenze_valide[emer_id - 1];
-
     printf("\n🔍 Thread %d - Inizio gestione emergenza %s\n",
            emer_id, emergenza->type.emergency_desc);
 
@@ -163,6 +163,7 @@ int gestione_emer(void *arg)
                 emergenza->status = COMPLETED;
                 printf("✅ Thread %d: Emergenza %s COMPLETATA\n",
                        emer_id, emergenza->type.emergency_desc);
+                slot->terminato = true;
             }
             else
             {
@@ -198,8 +199,11 @@ int main()
     char coordY[16];
     char delay_in_sec[21];
 
-    thrd_t emergenze[MAX_MSG_Q];
-    int id_emer[MAX_MSG_Q];
+    for (int i = 0; i < DIMENSIONE_CODA_THREAD; i++) {
+        queue_thread[i].occupato = false;
+        queue_thread[i].emer_id = -1;
+    }
+
     int thread_c = 0; // contatore per i thread
     mtx_init(&mutex_soccorritori, mtx_plain);
     
@@ -219,9 +223,10 @@ int main()
             buffer[bytes_read] = '\0';
             if (strcmp(buffer, MSG_STOP) == 0)
             {
-                for (int i = 0; i < thread_c; i++)
-                {
-                    thrd_join(emergenze[i], NULL);
+                for (int i = 0; i < DIMENSIONE_CODA_THREAD; i++) {
+                    if (queue_thread[i].occupato) {
+                        thrd_join(queue_thread[i].thread, NULL);
+                    }
                 }
                 printf("--- Comando exit ricevuto - Chiusura server ---\n");
                 break;
@@ -268,30 +273,55 @@ int main()
                             }
 
                             tot_emer_valide++;
-                            if (thread_c < MAX_MSG_Q)
-                            {
-                                // Assegna l'ID dell'emergenza (basato su posizione nell'array)
-                                id_emer[thread_c] = tot_emer_valide; // L'ultima emergenza aggiunta
+                            
+                            check_threads();
 
-                                printf("🚨 Creazione Thread %d per emergenza: %s (%d,%d)\n",
-                                       id_emer[thread_c], emergenze_valide[tot_emer_valide - 1].type.emergency_desc,
-                                       emergenze_valide[tot_emer_valide - 1].x, emergenze_valide[tot_emer_valide - 1].y);
-
-                                // Crea il thread che gestisce questa emergenza
-                                if (thrd_create(&emergenze[thread_c], gestione_emer, &id_emer[thread_c]) != thrd_success)
-                                {
-                                    printf("❌ Errore creazione thread per emergenza %d\n", id_emer[thread_c]);
-                                }
-                                else
-                                {
-                                    printf("✅ Thread %d avviato per gestione emergenza\n", id_emer[thread_c]);
-                                    thread_c++; // Incrementa solo se creazione riuscita
+                            int posizione_trovata = -1;
+                            for (int i = 0; i < DIMENSIONE_CODA_THREAD; i++) {
+                                if (!queue_thread[i].occupato) {
+                                    posizione_trovata = i;
+                                    break;
                                 }
                             }
-                            else
-                            {
-                                printf("⚠️ Raggiunto limite massimo di thread (%d)\n", MAX_MSG_Q);
+
+                            if (posizione_trovata != -1) {
+                                queue_thread[posizione_trovata].emer_id = tot_emer_valide;
+                                queue_thread[posizione_trovata].occupato = true;
+                                if (thrd_create(&queue_thread[posizione_trovata].thread, gestione_emer, &queue_thread[posizione_trovata]) != thrd_success) {
+                                    printf("❌ Errore nella creazione del thread n:%d\n", queue_thread[posizione_trovata].emer_id);
+                                }else{
+                                    printf("✅ Thread %d creato correttamente e messo nella posizione %d\n", queue_thread[posizione_trovata].emer_id, posizione_trovata);
+                                    queue_thread[posizione_trovata].terminato = false;
+                                }
+                            }else{
+                                inserisci_emer(tot_emer_valide);
+                                printf("⚠️ Tutti i thread sono occupati al momento, accodo l'emergenza %d\n", tot_emer_valide);
                             }
+
+                            check_threads();
+                            while (contatore_coda > 0) {
+                                int posizione_libera = -1;
+                                for (int i = 0; i < DIMENSIONE_CODA_THREAD; i++) {
+                                    if (!queue_thread[i].occupato) {
+                                        posizione_libera = i;
+                                        break;
+                                    }
+                                }
+                                if (posizione_libera == -1) break; 
+                                int prox_emer = rimuovi_emer();
+                                if(prox_emer != -1){
+                                    queue_thread[posizione_libera].emer_id = prox_emer;
+                                    queue_thread[posizione_libera].occupato = true;
+                                    if (thrd_create(&queue_thread[posizione_libera].thread, gestione_emer, &queue_thread[posizione_libera])!= thrd_success) {
+                                         printf("❌ Errore nella creazione del thread n:%d\n", queue_thread[posizione_trovata].emer_id);
+                                    }else{
+                                        printf("✅ Thread %d creato correttamente e messo nella posizione %d\n", queue_thread[posizione_trovata].emer_id, posizione_trovata);
+                                        queue_thread[posizione_trovata].terminato = false;
+                                    }
+                                }
+                                
+                            }
+
                         }
                     }
                     else
