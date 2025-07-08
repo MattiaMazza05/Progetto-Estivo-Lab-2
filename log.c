@@ -16,8 +16,6 @@ void scrivi_log(const char *id, const char *event, const char *message)
 {
     char buffer[1024];
     time_t now = time(NULL);
-    if (!id)
-        id = "N/A";
     int riga = snprintf(buffer, sizeof(buffer), "[%ld] [%s] [%s] %s\n", now, id, event, message);
 
     mtx_lock(&log_mutex);

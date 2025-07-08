@@ -5,9 +5,9 @@
 #include "log.h"
 #include "gestione_thread.h"
 
-int parse_emergency_types(void);
-int parse_rescuers(void);
 int parse_env(void);
+int parse_rescuers(void);
+int parse_emergency_types(void);
 
 #define MAX_SIZE 1024
 #define MSG_STOP "fileEnd"
@@ -192,29 +192,30 @@ int main()
     attr.mq_maxmsg = MAX_MSG_Q;
     attr.mq_msgsize = MAX_SIZE;
     attr.mq_curmsgs = 0; // mi definisco gli attibuti necessari per la coda
-
+    scrivi_log("main.c", "MESSAGE_QUEUE", "MQ creata e definiti attributi");
     emergency_request_t richiesta_emer;
     char nEmer[128];
     char coordX[16];
     char coordY[16];
     char delay_in_sec[21];
 
-    for (int i = 0; i < DIMENSIONE_CODA_THREAD; i++) {
+    for (int i = 0; i < DIMENSIONE_CODA_THREAD; i++)
+    {
         queue_thread[i].occupato = false;
         queue_thread[i].emer_id = -1;
     }
 
     int thread_c = 0; // contatore per i thread
     mtx_init(&mutex_soccorritori, mtx_plain);
-    
 
     mq = mq_open(n_queue, O_CREAT | O_RDONLY, 0644, &attr);
     if (mq == -1)
     {
+        scrivi_log("main.c", "MESSAGE_QUEUE", "Errore apertura MQ");
         PERROR_EXIT("⚠️ Errore nell'apertura della message queue ⚠️");
     }
 
-    printf("\n--- Lettura messaggi dalla coda ---\n");
+    scrivi_log("main.c", "MESSAGE_QUEUE", "Lettura messaggi MQ");
     while (1)
     {
         ssize_t bytes_read = mq_receive(mq, buffer, MAX_SIZE, NULL);
@@ -223,12 +224,14 @@ int main()
             buffer[bytes_read] = '\0';
             if (strcmp(buffer, MSG_STOP) == 0)
             {
-                for (int i = 0; i < DIMENSIONE_CODA_THREAD; i++) {
-                    if (queue_thread[i].occupato) {
+                for (int i = 0; i < DIMENSIONE_CODA_THREAD; i++)
+                {
+                    if (queue_thread[i].occupato)
+                    {
                         thrd_join(queue_thread[i].thread, NULL);
                     }
                 }
-                printf("--- Comando exit ricevuto - Chiusura server ---\n");
+                scrivi_log("main.c", "MESSAGE_QUEUE", "Messaggio exit ricevuto chiusura server");
                 break;
             }
             int i = 0;
@@ -271,64 +274,78 @@ int main()
                                     }
                                 }
                             }
-
+                            char log_msg[256];
+                            char id_e[16];
+                            snprintf(id_e, sizeof(id_e), "%d", tot_emer_valide);
+                            snprintf(log_msg, sizeof(log_msg), "Emergenza ACCETTTA: %s | Coordinate [%d,%d] | Time: %ld",
+                                     emergenze_valide[tot_emer_valide].type.emergency_desc, emergenze_valide[tot_emer_valide].x, emergenze_valide[tot_emer_valide].y, emergenze_valide[tot_emer_valide].time);
+                            scrivi_log(id_e, "MESSAGE_QUEUE", log_msg);
                             tot_emer_valide++;
-                            
+
                             check_threads();
 
                             int posizione_trovata = -1;
-                            for (int i = 0; i < DIMENSIONE_CODA_THREAD; i++) {
-                                if (!queue_thread[i].occupato) {
+                            for (int i = 0; i < DIMENSIONE_CODA_THREAD; i++)
+                            {
+                                if (!queue_thread[i].occupato)
+                                {
                                     posizione_trovata = i;
                                     break;
                                 }
                             }
 
-                            if (posizione_trovata != -1) {
+                            if (posizione_trovata != -1)
+                            {
                                 queue_thread[posizione_trovata].emer_id = tot_emer_valide;
                                 queue_thread[posizione_trovata].occupato = true;
-                                if (thrd_create(&queue_thread[posizione_trovata].thread, gestione_emer, &queue_thread[posizione_trovata]) != thrd_success) {
+                                if (thrd_create(&queue_thread[posizione_trovata].thread, gestione_emer, &queue_thread[posizione_trovata]) != thrd_success)
+                                {
                                     printf("❌ Errore nella creazione del thread n:%d\n", queue_thread[posizione_trovata].emer_id);
-                                }else{
+                                }
+                                else
+                                {
                                     printf("✅ Thread %d creato correttamente e messo nella posizione %d\n", queue_thread[posizione_trovata].emer_id, posizione_trovata);
                                     queue_thread[posizione_trovata].terminato = false;
                                 }
-                            }else{
+                            }
+                            else
+                            {
                                 inserisci_emer(tot_emer_valide);
                                 printf("⚠️ Tutti i thread sono occupati al momento, accodo l'emergenza %d\n", tot_emer_valide);
                             }
 
                             check_threads();
-                            while (contatore_coda > 0) {
+                            while (contatore_coda > 0)
+                            {
                                 int posizione_libera = -1;
-                                for (int i = 0; i < DIMENSIONE_CODA_THREAD; i++) {
-                                    if (!queue_thread[i].occupato) {
+                                for (int i = 0; i < DIMENSIONE_CODA_THREAD; i++)
+                                {
+                                    if (!queue_thread[i].occupato)
+                                    {
                                         posizione_libera = i;
                                         break;
                                     }
                                 }
-                                if (posizione_libera == -1) break; 
+                                if (posizione_libera == -1)
+                                    break;
                                 int prox_emer = rimuovi_emer();
-                                if(prox_emer != -1){
+                                if (prox_emer != -1)
+                                {
                                     queue_thread[posizione_libera].emer_id = prox_emer;
                                     queue_thread[posizione_libera].occupato = true;
-                                    if (thrd_create(&queue_thread[posizione_libera].thread, gestione_emer, &queue_thread[posizione_libera])!= thrd_success) {
-                                         printf("❌ Errore nella creazione del thread n:%d\n", queue_thread[posizione_trovata].emer_id);
-                                    }else{
+                                    if (thrd_create(&queue_thread[posizione_libera].thread, gestione_emer, &queue_thread[posizione_libera]) != thrd_success)
+                                    {
+                                        printf("❌ Errore nella creazione del thread n:%d\n", queue_thread[posizione_trovata].emer_id);
+                                    }
+                                    else
+                                    {
                                         printf("✅ Thread %d creato correttamente e messo nella posizione %d\n", queue_thread[posizione_trovata].emer_id, posizione_trovata);
                                         queue_thread[posizione_trovata].terminato = false;
                                     }
                                 }
-                                
                             }
-
                         }
                     }
-                    else
-                    {
-                        emergenze_valide[tot_emer_valide].status = CANCELLED;
-                    }
-                    // qua inserire l'evento scartato nel file di log
                 }
             }
         }

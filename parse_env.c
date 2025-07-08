@@ -1,7 +1,8 @@
 #include "types.h"
+#include "log.h"
 
 #define FILENAME "env.conf"
-#define BUFF_DIM 256
+#define BUFF_DIM 128
 
 char n_queue[BUFF_DIM];
 int height;
@@ -10,8 +11,8 @@ int width;
 int parse_env(void)
 {
     int fd;
-    SCALL(fd, open(FILENAME, O_RDONLY), "⚠️Non sono riuscito ad asprire il file di configurazione ⚠️");
-
+    SCALL(fd, open(FILENAME, O_RDONLY), "⚠️ Non sono riuscito ad asprire il file di configurazione ⚠️");
+    scrivi_log("PARSE_ENV", "FILE_PARSING", "File aperto");
     char buffer[BUFF_DIM];
     ssize_t bytesRead;
 
@@ -57,15 +58,13 @@ int parse_env(void)
                 }
                 selettore++;
             }
+            char log_msg[BUFF_DIM];
+            snprintf(log_msg, sizeof(log_msg),"Descrizione ambiente Nome: %.64s | Height: %d | Width: %d", n_queue, height, width);
+            scrivi_log("PARSE_ENV", "FILE_PARSING", log_msg);
         },
         "⚠️ Errore durante la lettura del file ⚠️");
 
     SCALL(fd, close(fd), "⚠️ Errore durante la chiusura del file ⚠️");
-
-    // printf("\n\x1b[32m========== VERIFICA DATI ENV ==========\x1b[0m\n\n");
-    // printf("\x1b[36m%-20s %-10s %-10s\x1b[0m\n", "Nome coda", "Altezza", "Larghezza");
-    // printf("%-20s %-10d %-10d\n", n_queue, height, width);
-    // printf("\n\x1b[32m========== FINE VERIFICA ENV ==========\x1b[0m\n");
-
+    scrivi_log("PARSE_ENV", "FILE_PARSING", "File chiuso");
     return 0;
 }

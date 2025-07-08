@@ -27,6 +27,11 @@
 
 #define LOG_FILE "progetto_estivo.log"
 #define MAX_LOG_MSG 1024
+
+#define MAX_SIZE 1024
+#define MSG_STOP "fileEnd"
+#define MAX_EMERGENZE 100
+
 typedef enum
 {
     IDLE,
@@ -97,5 +102,6 @@ typedef struct{
 } thread_slot_t;
 
 #define DIMENSIONE_THREAD_ATTESA 100 //stessa dimensione della mq
+
 
 #endif
