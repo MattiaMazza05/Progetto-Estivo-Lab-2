@@ -18,4 +18,4 @@
 
 #define DISTANZA_MANHATTAN(x1,y1,x2,y2, vel_socc) int ris1 = abs(x1-x2); int ris2 = abs(y1-y2); int vel = (ris1 + ris2)/vel_socc 
 
-#define CAMBIO_STATO(stato_precedente, stato_successivo)for (int id = 0; id < mezzi_totali_necessari; id++){for (int j = 0; j < tot_mezzi; j++){if (mezzi_totali[j].id == mezzi_per_emer[id] && mezzi_totali[j].status == stato_precedente){mezzi_totali[j].status = stato_successivo;break;}}}
+#define CAMBIO_STATO(stato_precedente, stato_successivo, tempo)for (int id = 0; id < mezzi_totali_necessari; id++){for (int j = 0; j < tot_mezzi; j++){if (mezzi_totali[j].id == mezzi_per_emer[id] && mezzi_totali[j].status == stato_precedente){mezzi_totali[j].status = stato_successivo;snprintf(id_socc, sizeof(id_socc), "%d", mezzi_totali[j].id);snprintf(log_msg, sizeof(log_msg), "Soccorritore: %s | Stato %d | Time: %ld",mezzi_totali[j].rescuer->rescuer_type_name, mezzi_totali[j].status, tempo);scrivi_log(id_socc, "RESCUER_STATUS", log_msg);break;}}}
