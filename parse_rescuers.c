@@ -62,10 +62,9 @@ int parse_rescuers(void)
                 rescuer_type_t *rescuer = malloc(sizeof(rescuer_type_t)); //alloco memoria dinamica per la struct rescuer_type_t che contiene le informazioni del veicolo
                 rescuer_digital_twin_t *tmp = realloc(mezzi_totali, sizeof(rescuer_digital_twin_t) * (tot_mezzi + nVeicoli));//eseguo un controllo per assicurarmi che l'allocazione sia andata a buon fine
                 if (tmp == NULL) {
-                    perror("⚠️ Errore durante l'assegnazione di memoria ⚠️");
                     scrivi_log("PARSE_RESCUER", "FILE_PARSING", "Errore durante assegnazione memoria");
                     free(mezzi_totali);
-                    exit(EXIT_FAILURE); 
+                    PERROR_EXIT("⚠️ Errore durante l'assegnazione di memoria ⚠️");
                 }
                 mezzi_totali = tmp;
                 rescuer->speed = cS;
@@ -102,4 +101,24 @@ int parse_rescuers(void)
     SCALL(fd_conf, close(fd_conf), "⚠️ Errore durante la chiusura del file di CONFIGURAZIONE ⚠️");
     scrivi_log("PARSE_RESCUER", "FILE_PARSING", "File chiuso");
     return 0;
+}
+
+void free_rescuers(void){
+    rescuer_type_t *liberi[tot_mezzi];
+    int n_liberi = 0;
+    for (int i = 0; i < tot_mezzi; i++) {
+        bool liberato = false;
+        for (int j = 0; j < n_liberi; j++) {
+            if (liberi[j] == mezzi_totali[i].rescuer) {
+                liberato = true;
+                break;
+            }
+        }
+        if(!liberato){
+            free(mezzi_totali[i].rescuer->rescuer_type_name);
+            free(mezzi_totali[i].rescuer);
+            liberi[n_liberi++] = mezzi_totali[i].rescuer;
+        }
+    }
+    free(mezzi_totali);
 }

@@ -47,9 +47,8 @@ int parse_emergency_types(void)
                     emergency_type_t *tmp = realloc(emergenze_totali, sizeof(emergency_type_t) * (tot_emergenze + 1)); // metto il valore di ritorno della relloc in una variabile temporanera per controllare se ci sono errori durante l'allocazione di memoria
                     if (tmp == NULL)
                     {
-                        perror("⚠️ Errore durante l'assegnazione di memoria ⚠️");
                         free(emergenze_totali); // libera la memoria già allocata
-                        exit(EXIT_FAILURE);
+                        PERROR_EXIT("⚠️ Errore durante l'assegnazione di memoria ⚠️")
                     }
                     emergenze_totali = tmp;
 
@@ -65,9 +64,8 @@ int parse_emergency_types(void)
                         rescuer_request_t *tmp2 = realloc(socc_per_emer, sizeof(rescuer_request_t) * (num_soccorritori + 1));
                         if (tmp2 == NULL)
                         {
-                            perror("⚠️ Errore durante l'assegnazione di memoria dinamica socc_per_emer ⚠️");
                             free(socc_per_emer);
-                            exit(EXIT_FAILURE);
+                            PERROR_EXIT("⚠️ Errore durante l'assegnazione di memoria dinamica socc_per_emer ⚠️");
                         }
                         socc_per_emer = tmp2;
                         iC = 0;
@@ -131,4 +129,12 @@ int parse_emergency_types(void)
     SCALL(fd, close(fd), "⚠️ Errore durante la chiusura del file ⚠️");
     scrivi_log("PARSE_EMERGENCY_TYPES", "FILE_PARSING", "File chiuso");
     return 0;
+}
+
+void free_emergenze(void){
+    for (int i = 0; i < tot_emergenze; i++) {
+        free(emergenze_totali[i].emergency_desc);
+        free(emergenze_totali[i].rescuers);
+    }
+    free(emergenze_totali);
 }

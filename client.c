@@ -26,7 +26,6 @@ int main(int argc, char *argv[])
         {
             PERROR_EXIT("🛑 Messaggio non inviato nella mq 🛑");
         }
-        printf("\x1b[32m✅ Messaggio inviato:\x1b[0m %s\n", buffer);
         if (mq_close(mq) == -1)
         {
             PERROR_EXIT("⚠️ Errore chiusura coda ⚠️");
@@ -62,7 +61,6 @@ int main(int argc, char *argv[])
                     {
                         PERROR_EXIT("🛑 Messaggio non inviato nella mq 🛑");
                     }
-                    printf("\x1b[32m✅ Messaggio inviato:\x1b[0m %s\n", buffer);
                     if (mq_close(mq) == -1)
                     {
                         PERROR_EXIT("⚠️ Errore chiusura coda ⚠️");
@@ -87,7 +85,6 @@ int main(int argc, char *argv[])
                     PERROR_EXIT("⚠️ Errore chiusura coda ⚠️");
                 }
             }
-            printf("\x1b[33mMessaggio di stop inviato. Il client termina.\x1b[0m\n");
             if (mq_close(mq) == -1)
             {
                 PERROR_EXIT("⚠️ Errore chiusura coda ⚠️");
@@ -95,13 +92,6 @@ int main(int argc, char *argv[])
             break;
         }
         printf("Il messaggio non è valido, digita ./client per avere le istruzioni\n");
-        break;
-    default:
-        printf(
-            "\nUtilizzo del client:\n"
-            "  \x1b[32m./client <nome_emergenza> <coord_x> <coord_y> <delay_in_secs>\x1b[0m per inviare una singola emergenza\n"
-            "  \x1b[32m./client exit\x1b[0m                                                 per terminare il client\n"
-            "  \x1b[32m./client -f <nomefile>\x1b[0m                                        per inviare emergenze da file di testo\n\n");
         break;
     }
     return 0;

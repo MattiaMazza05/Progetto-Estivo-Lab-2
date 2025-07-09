@@ -25,7 +25,7 @@ int gestione_emer(void *arg)
     char id_str[16];
     char id_socc[16];
     time_t now;
-    
+
     if (!lock(&mutex_soccorritori))
     {
         snprintf(id_str, sizeof(id_str), "%d", slot->emer_id);
@@ -452,6 +452,9 @@ int main()
         free(emergenze_valide[i].rescuers_dt);
     }
 
+
+    free_emergenze();
+    free_rescuers();
     mq_close(mq);
     mq_unlink(n_queue);
     mtx_destroy(&mutex_soccorritori);

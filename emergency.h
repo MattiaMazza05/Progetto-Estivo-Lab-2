@@ -5,5 +5,5 @@
 
 extern emergency_type_t *emergenze_totali;        
 extern int tot_emergenze;
-
+void free_emergenze(void);
 #endif
