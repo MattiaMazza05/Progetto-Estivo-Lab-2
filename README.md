@@ -211,4 +211,4 @@ La consegna consiste in un archivio `.zip` contenente:
 
 ## 👤 Autore
 
-> Mattia [Inserisci numero di matricola e email istituzionale]
+> Mattia Mazza 671860 m.mazza10@studenti.unipi.it
