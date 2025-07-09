@@ -93,6 +93,13 @@ int main(int argc, char *argv[])
         }
         printf("Il messaggio non è valido, digita ./client per avere le istruzioni\n");
         break;
+        default:
+        printf(
+            "\nUtilizzo del client:\n"
+            "  \x1b[32m./client <nome_emergenza> <coord_x> <coord_y> <delay_in_secs>\x1b[0m per inviare una singola emergenza\n"
+            "  \x1b[32m./client exit\x1b[0m                                                 per terminare il client\n"
+            "  \x1b[32m./client -f <nomefile>\x1b[0m                                        per inviare emergenze da file di testo\n\n");
+        break;
     }
     return 0;
 }

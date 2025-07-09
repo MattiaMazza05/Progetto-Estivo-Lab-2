@@ -3,7 +3,7 @@
 #include "emergency.h"
 #include "log.h"
 
-#define FILENAME "emergency_typers.conf"
+#define FILENAME "emergency_types.conf"
 #define BUFF_DIM 256
 
 emergency_type_t *emergenze_totali = NULL; // creo un array generale per le emergenze allocando di volta in volta memoria in modo dinamico
@@ -70,7 +70,7 @@ int parse_emergency_types(void)
                         socc_per_emer = tmp2;
                         iC = 0;
                         if (buffer[i] == ' ')
-                        { // aggiungo questo controllo perchè il primo nome di ogni mezzo era ' Nome' questo non mi faceva corrispondere la struct al nome
+                        { // aggiungo questo controllo perchè il primo nome di ogni mezzo era '_Nome' questo non mi faceva corrispondere la struct al nome
                             i++;
                         }
                         while (buffer[i] != ':' && i < bytesRead)
