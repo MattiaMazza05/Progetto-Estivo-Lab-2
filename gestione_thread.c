@@ -42,3 +42,16 @@ void check_threads(void)
     }
 }
 
+bool lock(mtx_t *mutex )
+{
+    struct timespec ts;
+    timespec_get(&ts, TIME_UTC);
+    ts.tv_sec += 10;
+
+    int res = mtx_timedlock(mutex, &ts);
+    if (res != thrd_success)
+    {
+        return false;
+    }
+    return true;
+}

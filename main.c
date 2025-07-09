@@ -21,13 +21,23 @@ int gestione_emer(void *arg)
 {
     thread_slot_t *slot = (thread_slot_t *)arg;
     int emer_id = slot->emer_id;
-    mtx_lock(&mutex_soccorritori);
+    char log_msg[256];
+    char id_str[16];
+    char id_socc[16];
+    time_t now;
+    
+    if (!lock(&mutex_soccorritori))
+    {
+        snprintf(id_str, sizeof(id_str), "%d", slot->emer_id);
+        snprintf(log_msg, sizeof(log_msg), "Impossibile acquisire lock per emergenza %d",
+                 slot->emer_id);
+        scrivi_log(id_str, "TIMEOUT", log_msg);
+        return -1;
+    }
     if (emer_id < 0 || emer_id >= tot_emer_valide)
     {
-        char log_msg[256];
-        char id_str[16];
         snprintf(id_str, sizeof(id_str), "%d", slot->emer_id);
-        time_t now = time(NULL);
+        now = time(NULL);
         snprintf(log_msg, sizeof(log_msg), "Emergenza NON VALIDA | Time: %ld", now);
         scrivi_log(id_str, "EMERGENCY_STATUS", log_msg);
         mtx_unlock(&mutex_soccorritori);
@@ -91,10 +101,8 @@ int gestione_emer(void *arg)
                 if (tempo_totale > t_limite)
                 {
                     emergenza->status = TIMEOUT;
-                    char log_msg[256];
-                    char id_str[16];
                     snprintf(id_str, sizeof(id_str), "%d", slot->emer_id);
-                    time_t now = time(NULL);
+                    now = time(NULL);
                     snprintf(log_msg, sizeof(log_msg), "Emergenza: %s | Stato %d (TIMEOUT) | Time: %ld",
                              emergenza->type.emergency_desc, emergenza->status, now);
                     scrivi_log(id_str, "EMERGENCY_STATUS", log_msg);
@@ -115,11 +123,8 @@ int gestione_emer(void *arg)
                 int indice_array = 0;
 
                 emergenza->status = IN_PROGRESS;
-                char log_msg[256];
-                char id_str[16];
-                char id_socc[16];
                 snprintf(id_str, sizeof(id_str), "%d", slot->emer_id);
-                time_t now = time(NULL);
+                now = time(NULL);
                 snprintf(log_msg, sizeof(log_msg), "Emergenza: %s | Stato %d | Time: %ld",
                          emergenza->type.emergency_desc, emergenza->status, now);
                 scrivi_log(id_str, "EMERGENCY_STATUS", log_msg);
@@ -156,7 +161,14 @@ int gestione_emer(void *arg)
                 mtx_unlock(&mutex_soccorritori);
                 sleep(tempo_totale);
 
-                mtx_lock(&mutex_soccorritori);
+                if (!lock(&mutex_soccorritori))
+                {
+                    snprintf(id_str, sizeof(id_str), "%d", slot->emer_id);
+                    snprintf(log_msg, sizeof(log_msg), "Impossibile acquisire lock per emergenza %d",
+                             slot->emer_id);
+                    scrivi_log(id_str, "TIMEOUT", log_msg);
+                    return -1;
+                }
                 now = time(NULL);
                 CAMBIO_STATO(EN_ROUTE_TO_SCENE, ON_SCENE, now);
                 int tempo_gestione = 0;
@@ -170,13 +182,27 @@ int gestione_emer(void *arg)
                 mtx_unlock(&mutex_soccorritori);
                 sleep(tempo_gestione);
 
-                mtx_lock(&mutex_soccorritori);
+                if (!lock(&mutex_soccorritori))
+                {
+                    snprintf(id_str, sizeof(id_str), "%d", slot->emer_id);
+                    snprintf(log_msg, sizeof(log_msg), "Impossibile acquisire lock per emergenza %d",
+                             slot->emer_id);
+                    scrivi_log(id_str, "TIMEOUT", log_msg);
+                    return -1;
+                }
                 now = time(NULL);
                 CAMBIO_STATO(ON_SCENE, RETURNING_TO_BASE, now)
                 mtx_unlock(&mutex_soccorritori);
                 sleep(tempo_totale);
 
-                mtx_lock(&mutex_soccorritori);
+                if (!lock(&mutex_soccorritori))
+                {
+                    snprintf(id_str, sizeof(id_str), "%d", slot->emer_id);
+                    snprintf(log_msg, sizeof(log_msg), "Impossibile acquisire lock per emergenza %d",
+                             slot->emer_id);
+                    scrivi_log(id_str, "TIMEOUT", log_msg);
+                    return -1;
+                }
                 now = time(NULL);
                 CAMBIO_STATO(RETURNING_TO_BASE, IDLE, now);
                 emergenza->status = COMPLETED;
@@ -222,7 +248,7 @@ int main()
         queue_thread[i].emer_id = -1;
     }
 
-    mtx_init(&mutex_soccorritori, mtx_plain);
+    mtx_init(&mutex_soccorritori, mtx_timed);
 
     mq = mq_open(n_queue, O_CREAT | O_RDONLY, 0644, &attr);
     if (mq == -1)
@@ -310,7 +336,7 @@ int main()
                                              emergenze_valide[tot_emer_valide].type.emergency_desc, emergenze_valide[tot_emer_valide].x, emergenze_valide[tot_emer_valide].y, emergenze_valide[tot_emer_valide].time);
                                     scrivi_log(id_str, "MESSAGE_QUEUE", log_msg);
                                     emergenze_valide[tot_emer_valide].status = ASSIGNED;
-                                    time_t now = time(NULL);
+                                    now = time(NULL);
                                     snprintf(log_msg, sizeof(log_msg), "Emergenza: %s | Stato %d | Time: %ld",
                                              richiesta_emer.emergency_name, emergenze_valide[tot_emer_valide].status, now);
                                     scrivi_log(id_str, "EMERGENCY_STATUS", log_msg);
@@ -367,7 +393,6 @@ int main()
                                             {
                                                 queue_thread[posizione_trovata].terminato = false;
                                             }
-          
                                         }
                                     }
                                 }

@@ -10,5 +10,5 @@ void inserisci_emer(int emer_id);
 int rimuovi_emer(void);
 void check_threads(void);
 int gestione_emer(void *arg);
-
+bool lock(mtx_t *mutex);
 #endif
