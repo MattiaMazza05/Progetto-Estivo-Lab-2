@@ -12,12 +12,14 @@ void crea_log(const char *filename)
     }
 }
 
+void open_log(){
+    SCALL(fd_log,open("progetto_estivo.log", O_WRONLY | O_APPEND , 0644), "⚠️ Non sono riuscito ad aprire il file di LOG ⚠️");
+}
+
 void scrivi_log(const char *id, const char *event, const char *message)
 {
     char buffer[1024];
     time_t now = time(NULL);
-    if (!id)
-        id = "N/A";
     int riga = snprintf(buffer, sizeof(buffer), "[%ld] [%s] [%s] %s\n", now, id, event, message);
 
     mtx_lock(&log_mutex);

@@ -1,17 +1,28 @@
 #include "types.h"
+#include "log.h"
 
 #define FILENAME "env.conf"
-#define BUFF_DIM 256
+#define BUFF_DIM 128
 
 char n_queue[BUFF_DIM];
 int height;
 int width;
 
-int parse_env(void)
-{
-    int fd;
-    SCALL(fd, open(FILENAME, O_RDONLY), "⚠️Non sono riuscito ad asprire il file di configurazione ⚠️");
+void open_log();
 
+int parse_env(int flag)
+{
+
+    int fd;
+    SCALL(fd, open(FILENAME, O_RDONLY), "⚠️ Non sono riuscito ad asprire il file di configurazione ⚠️");
+    if (flag != 0)
+    {
+        open_log();
+    }
+    else
+    {
+        scrivi_log("PARSE_ENV", "FILE_PARSING", "File aperto");
+    }
     char buffer[BUFF_DIM];
     ssize_t bytesRead;
 
@@ -43,7 +54,7 @@ int parse_env(void)
                 switch (selettore)
                 {
                 case 0:
-                    strcpy(n_queue, "/");     
+                    strcpy(n_queue, "/");
                     strcat(n_queue, appoggio); // in questo modo mi creo direttamente la varibile per dare il nome alla queue
                     break;
                 case 1:
@@ -57,15 +68,20 @@ int parse_env(void)
                 }
                 selettore++;
             }
+            if (flag == 0)
+            {
+                char log_msg[BUFF_DIM];
+                snprintf(log_msg, sizeof(log_msg), "Descrizione ambiente Nome: %.64s | Height: %d | Width: %d", n_queue, height, width);
+
+                scrivi_log("PARSE_ENV", "FILE_PARSING", log_msg);
+            }
         },
         "⚠️ Errore durante la lettura del file ⚠️");
 
     SCALL(fd, close(fd), "⚠️ Errore durante la chiusura del file ⚠️");
-
-    // printf("\n\x1b[32m========== VERIFICA DATI ENV ==========\x1b[0m\n\n");
-    // printf("\x1b[36m%-20s %-10s %-10s\x1b[0m\n", "Nome coda", "Altezza", "Larghezza");
-    // printf("%-20s %-10d %-10d\n", n_queue, height, width);
-    // printf("\n\x1b[32m========== FINE VERIFICA ENV ==========\x1b[0m\n");
-
+    if (flag == 0)
+    {
+        scrivi_log("PARSE_ENV", "FILE_PARSING", "File chiuso");
+    }
     return 0;
 }

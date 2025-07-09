@@ -1,19 +1,19 @@
 #include "types.h"
 #include "rescuers.h"
 #include "emergency.h"
+#include "log.h"
 
 #define FILENAME "emergency_typers.conf"
 #define BUFF_DIM 256
 
-emergency_type_t *emergenze_totali =
-    NULL;              // creo un array generale per le emergenze allocando di volta in volta memoria in modo dinamico
-int tot_emergenze = 0; // questo contatore mi serve per l'allocazione di memoria
+emergency_type_t *emergenze_totali = NULL; // creo un array generale per le emergenze allocando di volta in volta memoria in modo dinamico
+int tot_emergenze = 0;                     // questo contatore mi serve per l'allocazione di memoria
 
 int parse_emergency_types(void)
 {
     int fd;
-    SCALL(fd, open(FILENAME, O_RDONLY),
-          "⚠️ Non sono riuscito ad aprire il file di configurazione ⚠️");
+    SCALL(fd, open(FILENAME, O_RDONLY), "⚠️ Non sono riuscito ad aprire il file di configurazione ⚠️");
+    scrivi_log("PARSE_EMERGENCY_TYPES", "FILE_PARSING", "File aperto");
 
     char buffer[BUFF_DIM];
     ssize_t bytesRead;
@@ -110,6 +110,14 @@ int parse_emergency_types(void)
 
                     emergenze_totali[tot_emergenze].rescuers = socc_per_emer;
                     emergenze_totali[tot_emergenze].rescuers_req_number = num_soccorritori;
+                    char log_msg[256];
+                    snprintf(log_msg, sizeof(log_msg), "Nome: %s | Priorità: %d | Soccorritori richiesti: %d",
+                             emergenze_totali[tot_emergenze].emergency_desc,
+                             emergenze_totali[tot_emergenze].priority,
+                             emergenze_totali[tot_emergenze].rescuers_req_number);
+
+                    scrivi_log("parse_emergency_types.c", "FILE_PARSING", log_msg);
+
                     tot_emergenze++;
                 }
                 else
@@ -121,39 +129,6 @@ int parse_emergency_types(void)
         "⚠️ Errore durante la lettura del file ⚠️");
 
     SCALL(fd, close(fd), "⚠️ Errore durante la chiusura del file ⚠️");
-
-    printf("\n\x1b[32m========== VERIFICA EMERGENZE ==========\x1b[0m\n\n");
-    printf("\x1b[36m%-3s %-15s %-8s %-8s %-15s %-8s %-8s %-10s\x1b[0m\n",
-           "ID", "Nome", "Priorità", "Rich#", "Tipo", "Quantità", "Tempo", "Velocità");
-
-    for (int e = 0; e < tot_emergenze; e++)
-    {
-        int req_num = emergenze_totali[e].rescuers_req_number;
-        for (int r = 0; r < req_num; r++)
-        {
-            printf("%-3d %-15s %-8d %-8d ",
-                   e + 1,
-                   emergenze_totali[e].emergency_desc,
-                   emergenze_totali[e].priority,
-                   req_num);
-            if (emergenze_totali[e].rescuers[r].type)
-            {
-                printf("%-15s %-8d %-8d %-10d\n",
-                       emergenze_totali[e].rescuers[r].type->rescuer_type_name,
-                       emergenze_totali[e].rescuers[r].required_count,
-                       emergenze_totali[e].rescuers[r].time_to_manage,
-                       emergenze_totali[e].rescuers[r].type->speed);
-            }
-            else
-            {
-                printf("\x1b[31m%-15s\x1b[0m %-8d %-8d %-10s\n",
-                       "NON ASSEGNATO",
-                       emergenze_totali[e].rescuers[r].required_count,
-                       emergenze_totali[e].rescuers[r].time_to_manage,
-                       "-");
-            }
-        }
-    }
-    printf("\n\x1b[32m========== FINE VERIFICA EMERGENZE ==========\x1b[0m\n");
+    scrivi_log("PARSE_EMERGENCY_TYPES", "FILE_PARSING", "File chiuso");
     return 0;
 }
