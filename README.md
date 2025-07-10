@@ -2,8 +2,8 @@
 **Progetto di Laboratorio 2 — a.a. 2024-2025**  
 Multithreading e Code di Messaggi in C11
 
-![Build](https://img.shields.io/badge/build-passing-brightgreen)
-![License](https://img.shields.io/badge/license-MIT-blue)
+![Stato](https://img.shields.io/badge/build-finito-brightgreen)
+![License](https://img.shields.io/badge/license-UniPisa-blue)
 ![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-orange)
 
 ## 📌 Obiettivo
